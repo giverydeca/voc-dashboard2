@@ -1,0 +1,3484 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>店研創意 VOC分析ダッシュボード</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+/* ============================================================
+   VOC Dashboard — Professional Design System v9
+   Font: Inter (Latin) + Noto Sans JP (Japanese)
+   Palette: Navy-primary / Slate-neutral / Accent colors
+   ============================================================ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+:root {
+  /* Primary palette */
+  --primary:        #1E3A5F;   /* deep navy */
+  --primary-mid:    #2563EB;   /* royal blue  */
+  --primary-light:  #EFF6FF;   /* pale blue */
+  --primary-hover:  #1D4ED8;
+
+  /* Semantic colors */
+  --success:   #059669;
+  --success-bg:#ECFDF5;
+  --warning:   #D97706;
+  --warning-bg:#FFFBEB;
+  --danger:    #DC2626;
+  --danger-bg: #FEF2F2;
+  --info:      #0891B2;
+  --info-bg:   #ECFEFF;
+  --purple:    #7C3AED;
+  --purple-bg: #F5F3FF;
+
+  /* Neutral scale */
+  --slate-50:  #F8FAFC;
+  --slate-100: #F1F5F9;
+  --slate-200: #E2E8F0;
+  --slate-300: #CBD5E1;
+  --slate-400: #94A3B8;
+  --slate-500: #64748B;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1E293B;
+  --slate-900: #0F172A;
+
+  /* Legacy aliases (keep JS working) */
+  --gray50:  var(--slate-50);
+  --gray100: var(--slate-100);
+  --gray200: var(--slate-200);
+  --gray400: var(--slate-400);
+  --gray600: var(--slate-600);
+  --gray800: var(--slate-800);
+  --urgency-high: var(--danger);
+  --urgency-mid:  var(--warning);
+  --urgency-low:  var(--primary-mid);
+
+  /* Elevation */
+  --shadow-xs: 0 1px 2px rgba(0,0,0,.05);
+  --shadow-sm: 0 1px 4px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.03);
+  --shadow:    0 2px 8px rgba(0,0,0,.08), 0 0 0 1px rgba(0,0,0,.04);
+  --shadow-md: 0 4px 16px rgba(0,0,0,.10), 0 0 0 1px rgba(0,0,0,.04);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,.12);
+
+  /* Radius */
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+}
+
+/* ── Reset & Base ── */
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+body {
+  font-family: 'Inter','Noto Sans JP',system-ui,sans-serif;
+  background: var(--slate-100);
+  color: var(--slate-800);
+  font-size: 14px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Header ── */
+#header {
+  background: linear-gradient(135deg, var(--slate-900) 0%, var(--primary) 100%);
+  color: #fff;
+  padding: 0 28px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 12px rgba(0,0,0,.25);
+}
+#header h1 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -.3px;
+  white-space: nowrap;
+}
+#header .badge {
+  background: rgba(255,255,255,.15);
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 20px;
+  padding: 2px 12px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .3px;
+}
+#load-status {
+  margin-left: auto;
+  font-size: 11px;
+  opacity: .75;
+  white-space: nowrap;
+}
+
+/* ── Tab Nav ── */
+#tab-nav {
+  background: #fff;
+  border-bottom: 2px solid var(--slate-200);
+  display: flex;
+  overflow-x: auto;
+  position: sticky;
+  top: 54px;
+  z-index: 99;
+  padding: 0 12px;
+  scrollbar-width: none;
+}
+#tab-nav::-webkit-scrollbar { display: none; }
+.tab-btn {
+  padding: 14px 18px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 500;
+  color: var(--slate-500);
+  white-space: nowrap;
+  border-bottom: 3px solid transparent;
+  margin-bottom: -2px;
+  transition: color .15s, border-color .15s;
+  letter-spacing: -.1px;
+}
+.tab-btn:hover  { color: var(--primary-mid); }
+.tab-btn.active {
+  color: var(--primary-mid);
+  border-bottom-color: var(--primary-mid);
+  font-weight: 700;
+}
+
+/* ── Global Filter Bar ── */
+#filter-bar {
+  background: #fff;
+  padding: 10px 28px;
+  border-bottom: 1px solid var(--slate-200);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.filter-group { display:flex; align-items:center; gap:6px; }
+.filter-group label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--slate-500);
+  white-space: nowrap;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.filter-group select,
+.filter-group input[type=date] {
+  font-size: 12px;
+  font-family: inherit;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--r-sm);
+  padding: 5px 10px;
+  background: var(--slate-50);
+  color: var(--slate-700);
+  transition: border-color .15s;
+}
+.filter-group select:focus,
+.filter-group input[type=date]:focus {
+  outline: none;
+  border-color: var(--primary-mid);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+}
+#btn-reset {
+  font-size: 12px;
+  font-family: inherit;
+  padding: 5px 14px;
+  background: var(--slate-100);
+  border: 1px solid var(--slate-200);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  color: var(--slate-600);
+  transition: background .15s;
+}
+#btn-reset:hover { background: var(--slate-200); }
+
+/* ── Main Content ── */
+#main { padding: 24px 28px; max-width: 1600px; margin: 0 auto; }
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+/* ── KPI Grid ── */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(175px,1fr));
+  gap: 14px;
+  margin-bottom: 24px;
+}
+.kpi-card {
+  background: #fff;
+  border-radius: var(--r-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  border-left: 4px solid var(--primary-mid);
+  position: relative;
+  overflow: hidden;
+  transition: box-shadow .2s, transform .2s;
+}
+.kpi-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.kpi-card::after {
+  content: '';
+  position: absolute;
+  top: 0; right: 0;
+  width: 56px; height: 56px;
+  background: var(--primary-light);
+  border-radius: 0 0 0 100%;
+  opacity: .5;
+}
+.kpi-card.green  { border-left-color: var(--success); }
+.kpi-card.green::after  { background: var(--success-bg); }
+.kpi-card.yellow { border-left-color: var(--warning); }
+.kpi-card.yellow::after { background: var(--warning-bg); }
+.kpi-card.red    { border-left-color: var(--danger); }
+.kpi-card.red::after    { background: var(--danger-bg); }
+.kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--slate-500);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.kpi-value {
+  font-size: 28px;
+  font-weight: 800;
+  color: var(--slate-900);
+  letter-spacing: -1px;
+  line-height: 1.1;
+}
+.kpi-sub {
+  font-size: 11px;
+  color: var(--slate-400);
+  margin-top: 6px;
+}
+
+/* ── Chart Grid ── */
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(2,1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.chart-card {
+  background: #fff;
+  border-radius: var(--r-lg);
+  padding: 20px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow .2s;
+}
+.chart-card:hover { box-shadow: var(--shadow-md); }
+.chart-card.full { grid-column: 1/-1; }
+.chart-card h3 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--slate-700);
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--slate-100);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.chart-wrap { position:relative; height:260px; }
+
+/* ── Table ── */
+.tbl-wrap { overflow-x:auto; border-radius: var(--r-md); }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+th {
+  background: var(--slate-800);
+  color: #fff;
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+}
+th:first-child { border-radius: var(--r-sm) 0 0 0; }
+th:last-child  { border-radius: 0 var(--r-sm) 0 0; }
+td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--slate-100);
+  vertical-align: top;
+  color: var(--slate-700);
+}
+tr:nth-child(even) td { background: var(--slate-50); }
+tr:hover td { background: #EFF6FF !important; cursor: pointer; }
+.clickable-row:hover { background: #EFF6FF; }
+
+/* ── Badges ── */
+.badge-urgency {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .2px;
+}
+.badge-urgency.高 { background: var(--danger-bg);  color: #991B1B; }
+.badge-urgency.中 { background: var(--warning-bg); color: #92400E; }
+.badge-urgency.低 { background: var(--primary-light); color: #1E40AF; }
+.badge-resolve {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+.badge-resolve.解決             { background: var(--success-bg); color: #065F46; }
+.badge-resolve.未解決           { background: var(--danger-bg);  color: #991B1B; }
+.badge-resolve.折り返し・調査中 { background: var(--warning-bg); color: #92400E; }
+
+/* ── Pagination ── */
+#pager, #voice-pager {
+  display: flex;
+  gap: 4px;
+  justify-content: center;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.page-btn, .voice-page-btn {
+  padding: 5px 11px;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--slate-600);
+  transition: all .15s;
+}
+.page-btn:hover, .voice-page-btn:hover { background: var(--slate-100); }
+.page-btn.active, .voice-page-btn.active {
+  background: var(--primary-mid);
+  color: #fff;
+  border-color: var(--primary-mid);
+  font-weight: 700;
+}
+
+/* ── Modal ── */
+#modal-overlay, #voice-modal-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(15,23,42,.55);
+  backdrop-filter: blur(3px);
+  z-index: 1000;
+  overflow-y: auto;
+  padding: 24px;
+}
+#voice-modal-overlay { z-index: 1100; }
+#modal-box, #voice-modal-box {
+  background: #fff;
+  border-radius: var(--r-xl);
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 28px;
+  position: relative;
+  box-shadow: var(--shadow-lg);
+}
+#voice-modal-box { max-width: 860px; }
+#modal-close, #voice-modal-close {
+  position: absolute;
+  top: 16px; right: 18px;
+  font-size: 22px;
+  cursor: pointer;
+  color: var(--slate-400);
+  line-height: 1;
+  transition: color .15s;
+}
+#modal-close:hover, #voice-modal-close:hover { color: var(--slate-700); }
+#modal-box h2, #voice-modal-box h2 {
+  font-size: 16px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  color: var(--primary);
+  padding-right: 30px;
+}
+.modal-grid { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.modal-field label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--slate-400);
+  display: block;
+  margin-bottom: 3px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.modal-field p {
+  font-size: 13px;
+  line-height: 1.6;
+  background: var(--slate-50);
+  padding: 8px 10px;
+  border-radius: var(--r-sm);
+  color: var(--slate-700);
+}
+.modal-field.full { grid-column:1/-1; }
+
+/* ── Voice Card ── */
+.voice-card {
+  background: var(--slate-50);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  border-left: 3px solid var(--primary-mid);
+}
+.voice-card .vc-meta  { font-size:11px; color:var(--slate-400); margin-bottom:4px; }
+.voice-card .vc-text  { font-size:13px; line-height:1.75; color:var(--slate-700); }
+.voice-card .vc-intent {
+  font-size: 11px;
+  color: var(--slate-500);
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--slate-200);
+}
+
+/* ── Utility ── */
+.search-box {
+  padding: 7px 12px;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  font-family: inherit;
+  width: 220px;
+  background: var(--slate-50);
+}
+.search-box:focus {
+  outline: none;
+  border-color: var(--primary-mid);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+}
+.export-btn {
+  padding: 7px 18px;
+  background: var(--primary-mid);
+  color: #fff;
+  border: none;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 600;
+  transition: background .15s;
+}
+.export-btn:hover { background: var(--primary-hover); }
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--slate-800);
+  margin: 22px 0 12px;
+}
+
+/* ── Loading Spinner ── */
+#loading {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 4px solid var(--slate-200);
+  border-top-color: var(--primary-mid);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+@keyframes spin { to { transform:rotate(360deg); } }
+
+/* ── Heatmap ── */
+.heatmap-wrap { overflow-x:auto; }
+.heatmap-table { font-size:11px; }
+.heatmap-table th, .heatmap-table td {
+  padding: 6px 10px;
+  border: 1px solid var(--slate-100);
+}
+.heatmap-table td { text-align:center; }
+
+/* ============================================================
+   PAIN POINT TAB
+   ============================================================ */
+.pp-section { margin-bottom: 28px; }
+.pp-section-header {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--slate-800);
+  padding: 12px 18px;
+  background: #fff;
+  border-radius: var(--r-md) var(--r-md) 0 0;
+  border-left: 5px solid var(--primary-mid);
+  border-bottom: 2px solid var(--slate-100);
+  box-shadow: var(--shadow-xs);
+}
+.pp-section-body {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 0;
+  background: #fff;
+  border-radius: 0 0 var(--r-md) var(--r-md);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.pp-chart-side { padding: 18px; border-right: 1px solid var(--slate-100); }
+.pp-table-side { padding: 18px; overflow-x:auto; }
+.pp-chart-side .chart-card,
+.pp-table-side .chart-card { box-shadow:none; border-radius:0; padding:0; }
+@media(max-width:900px) {
+  .pp-section-body { grid-template-columns:1fr; }
+  .pp-chart-side   { border-right:none; border-bottom:1px solid var(--slate-100); }
+}
+
+/* ============================================================
+   OPERATOR TAB
+   ============================================================ */
+.op-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px,1fr));
+  gap: 16px;
+  margin-bottom: 22px;
+}
+.op-card {
+  background: #fff;
+  border-radius: var(--r-lg);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+  border-top: 3px solid var(--primary-mid);
+  transition: box-shadow .2s;
+}
+.op-card:hover { box-shadow: var(--shadow-md); }
+.op-card h4 {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--primary);
+}
+.op-score-bar    { margin-bottom: 6px; }
+.op-score-label  { display:flex; justify-content:space-between; font-size:11px; color:var(--slate-500); margin-bottom:3px; }
+.bar-bg   { background:var(--slate-100); height:6px; border-radius:4px; overflow:hidden; }
+.bar-fill { height:6px; border-radius:4px; background:linear-gradient(90deg,var(--primary-mid),var(--info)); transition:width .5s ease; }
+
+/* ============================================================
+   EC IMPROVEMENT TAB
+   ============================================================ */
+/* Summary banner */
+.ec-summary {
+  background: linear-gradient(135deg, var(--slate-900) 0%, #1E3A5F 60%, #2563EB 100%);
+  color: #fff;
+  border-radius: var(--r-xl);
+  padding: 26px 30px;
+  margin-bottom: 22px;
+  box-shadow: var(--shadow-md);
+}
+.ec-summary h2 { font-size:18px; font-weight:800; margin-bottom:14px; letter-spacing:-.3px; }
+.ec-kpi-row { display:flex; gap:28px; flex-wrap:wrap; }
+.ec-kpi { text-align:center; }
+.ec-kpi .val { font-size:30px; font-weight:800; letter-spacing:-1px; line-height:1; }
+.ec-kpi .lbl { font-size:11px; opacity:.8; margin-top:4px; font-weight:500; }
+
+/* Sub-tab nav */
+#ec-subtab-nav {
+  display: flex;
+  background: var(--slate-100);
+  border-radius: var(--r-md);
+  padding: 4px;
+  margin-bottom: 20px;
+  gap: 4px;
+}
+.ec-subtab-btn {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 13px;
+  font-family: inherit;
+  font-weight: 600;
+  color: var(--slate-500);
+  border-radius: var(--r-sm);
+  transition: all .2s;
+  white-space: nowrap;
+}
+.ec-subtab-btn:hover  { background:#fff; color: var(--primary-mid); }
+.ec-subtab-btn.active {
+  background: #fff;
+  color: var(--primary-mid);
+  box-shadow: var(--shadow-xs);
+}
+.ec-subtab-panel { display:none; }
+.ec-subtab-panel.active { display:block; }
+
+/* EC Filter bar */
+.ec-filter-bar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 18px;
+  background: #fff;
+  padding: 12px 18px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--slate-200);
+  box-shadow: var(--shadow-xs);
+}
+.ec-filter-label { font-size:12px; font-weight:700; color:var(--slate-700); }
+.ec-filter-group { display:flex; align-items:center; gap:6px; }
+.ec-filter-group label { font-size:11px; color:var(--slate-500); font-weight:600; text-transform:uppercase; letter-spacing:.3px; }
+.ec-filter-group select,
+.ec-filter-group input {
+  font-size: 12px;
+  font-family: inherit;
+  padding: 5px 9px;
+  border: 1px solid var(--slate-200);
+  border-radius: var(--r-sm);
+  background: var(--slate-50);
+  color: var(--slate-700);
+}
+#f-ec-search { width:160px; }
+.ec-reset-btn {
+  font-size:12px;
+  font-family:inherit;
+  padding:5px 12px;
+  border:1px solid var(--slate-200);
+  border-radius:var(--r-sm);
+  background:#fff;
+  cursor:pointer;
+  color:var(--slate-500);
+  transition:background .15s;
+}
+.ec-reset-btn:hover { background:var(--slate-100); }
+.ec-count-label { font-size:12px; color:var(--slate-400); margin-left:auto; }
+
+/* EC page card */
+.ec-page-card {
+  background: #fff;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 20px;
+  overflow: hidden;
+  border-left: 5px solid var(--slate-300);
+  transition: box-shadow .2s, transform .2s;
+}
+.ec-page-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.ec-page-card.pri-high { border-left-color: var(--danger); }
+.ec-page-card.pri-mid  { border-left-color: var(--warning); }
+.ec-page-card.pri-low  { border-left-color: var(--primary-mid); }
+
+/* Legacy priority classes */
+.ec-page-card.high { border-left-color: var(--danger); }
+.ec-page-card.mid  { border-left-color: var(--warning); }
+.ec-page-card.low  { border-left-color: var(--primary-mid); }
+
+.ec-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 16px 22px 12px;
+  background: var(--slate-50);
+  border-bottom: 1px solid var(--slate-100);
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.ec-card-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--slate-900);
+  letter-spacing: -.2px;
+}
+.ec-card-url {
+  font-size: 11px;
+  color: var(--slate-500);
+  margin-top: 4px;
+  word-break: break-all;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ec-card-url a { color: var(--primary-mid); text-decoration:none; }
+.ec-card-url a:hover { text-decoration:underline; }
+.ec-url-link { font-size:11px; color:var(--primary-mid); text-decoration:none; }
+.ec-url-link:hover { text-decoration:underline; }
+
+/* Priority badge */
+.ec-pri-badge, .priority-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: .2px;
+}
+.ec-pri-badge.high, .priority-badge.高, .priority-badge.high { background:var(--danger-bg);  color:#B91C1C; }
+.ec-pri-badge.mid,  .priority-badge.中, .priority-badge.mid  { background:var(--warning-bg); color:#92400E; }
+.ec-pri-badge.low,  .priority-badge.低, .priority-badge.low  { background:var(--primary-light); color:#1E40AF; }
+
+/* EC stat badges */
+.ec-stat-row { display:flex; gap:6px; flex-wrap:wrap; padding:12px 22px 4px; }
+.ec-stat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--slate-100);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--slate-600);
+}
+.ec-stat-badge.high { background:var(--danger-bg);   color:#B91C1C; }
+.ec-stat-badge.mid  { background:var(--warning-bg);  color:#D97706; }
+.ec-stat-badge.low  { background:var(--primary-light); color:#1E40AF; }
+
+/* EC card body 2-col grid */
+.ec-card-body {
+  padding: 0 22px 14px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media(max-width:800px) { .ec-card-body { grid-template-columns:1fr; } }
+
+.ec-card-section {
+  background: var(--slate-50);
+  border-radius: var(--r-md);
+  padding: 14px 16px;
+  border: 1px solid var(--slate-100);
+}
+.ec-card-section h4 {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--slate-500);
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.ec-card-section ul { list-style:none; padding:0; margin:0; }
+.ec-card-section ul li {
+  font-size: 12px;
+  color: var(--slate-600);
+  padding: 5px 0;
+  border-bottom: 1px solid var(--slate-200);
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  line-height: 1.5;
+}
+.ec-card-section ul li:last-child { border-bottom:none; }
+.ec-card-section ul li::before { content:"→"; color:var(--slate-300); flex-shrink:0; font-weight:700; }
+
+/* Barrier items */
+.ec-barrier-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 0;
+  border-bottom: 1px solid var(--slate-100);
+  font-size: 12px;
+  color: var(--slate-600);
+}
+.ec-barrier-item:last-child { border-bottom:none; }
+.ec-barrier-count {
+  background: var(--danger-bg);
+  color: var(--danger);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+/* Fix list (改善箇所) */
+.ec-fix-list {
+  background: var(--success-bg);
+  border-radius: var(--r-md);
+  padding: 14px 18px;
+  margin: 0 22px 18px;
+  border: 1px solid #A7F3D0;
+}
+.ec-fix-list h4 {
+  font-size: 11px;
+  font-weight: 700;
+  color: #065F46;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+}
+.ec-fix-list ol { padding-left:18px; margin:0; }
+.ec-fix-list ol li {
+  font-size: 12px;
+  color: #064E3B;
+  padding: 4px 0;
+  line-height: 1.6;
+}
+
+/* Improvement cards (legacy) */
+.improvement-card {
+  background: #fff;
+  border-radius: var(--r-lg);
+  padding: 18px 22px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+  border-left: 5px solid var(--slate-300);
+  transition: box-shadow .2s;
+}
+.improvement-card:hover { box-shadow: var(--shadow-md); }
+.improvement-card.high { border-left-color:var(--danger); }
+.improvement-card.mid  { border-left-color:var(--warning); }
+.improvement-card.low  { border-left-color:var(--primary-mid); }
+.improvement-card .card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; gap:12px; }
+.improvement-card .page-name   { font-weight:700; font-size:15px; color:var(--slate-900); }
+.improvement-card .ec-url-link { font-size:11px; color:var(--primary-mid); text-decoration:underline; word-break:break-all; }
+.improvement-card .ic-badges   { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:10px; }
+.improvement-card .ic-badge    { font-size:11px; padding:2px 9px; border-radius:12px; background:var(--slate-100); color:var(--slate-600); }
+.improvement-card .ic-barrier-list { background:var(--warning-bg); border-radius:var(--r-sm); padding:10px 14px; margin:8px 0; font-size:12px; color:#92400E; border:1px solid #FDE68A; }
+.improvement-card .ic-barrier-list li { margin-bottom:3px; list-style:disc; margin-left:18px; }
+.improvement-card .ic-actions { background:var(--success-bg); border-radius:var(--r-sm); padding:10px 14px; margin:8px 0; font-size:12px; color:#166534; border:1px solid #A7F3D0; }
+.improvement-card .ic-actions li { margin-bottom:4px; list-style:none; padding-left:2px; }
+.improvement-card .ic-actions li::before { content:"✅ "; margin-right:2px; }
+.improvement-card .ic-meta { display:flex; gap:16px; flex-wrap:wrap; font-size:11px; color:var(--slate-400); margin-top:10px; padding-top:10px; border-top:1px solid var(--slate-100); }
+.improvement-card .ic-meta b { color:var(--slate-600); }
+
+/* EC section title */
+.ec-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--slate-500);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* EC category */
+.ec-category { margin-bottom: 30px; }
+.ec-category h3 {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--slate-800);
+  margin-bottom: 14px;
+  padding-left: 12px;
+  border-left: 4px solid var(--primary-mid);
+}
+
+/* Product improvement card */
+.prod-improve-card, .prod-card, .ec-prod-card {
+  background: #fff;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+  overflow: hidden;
+  border-left: 5px solid var(--purple);
+  transition: box-shadow .2s;
+}
+.prod-improve-card:hover, .prod-card:hover { box-shadow: var(--shadow-md); }
+.prod-card-header, .ec-prod-header {
+  background: var(--purple-bg);
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #EDE9FE;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--slate-900);
+}
+.prod-card-name, .prod-card-title { font-size:14px; font-weight:700; color:var(--slate-900); }
+.prod-card-body {
+  padding: 16px 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media(max-width:900px) { .prod-card-body { grid-template-columns:1fr; } }
+
+/* Operator improve section */
+.op-improve-section {
+  background: #fff;
+  border-radius: var(--r-lg);
+  padding: 22px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 22px;
+}
+.op-improve-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--slate-800);
+  margin-bottom: 18px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--slate-100);
+}
+.op-insight-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px,1fr));
+  gap: 14px;
+}
+.op-insight-card {
+  background: var(--slate-50);
+  border-radius: var(--r-md);
+  padding: 16px;
+  border: 1px solid var(--slate-200);
+  border-top: 3px solid var(--primary-mid);
+}
+.op-insight-card h5 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--slate-700);
+  margin-bottom: 10px;
+}
+.op-insight-card ul { list-style:none; padding:0; margin:0; }
+.op-insight-card li {
+  font-size: 12px;
+  color: var(--slate-600);
+  padding: 4px 0;
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  line-height: 1.5;
+}
+.op-kpi-row-ec { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:22px; }
+.op-kpi-ec {
+  background: #fff;
+  border-radius: var(--r-lg);
+  padding: 16px 20px;
+  box-shadow: var(--shadow-sm);
+  flex: 1;
+  min-width: 140px;
+  border-top: 4px solid var(--purple);
+}
+.op-kpi-ec .val { font-size:24px; font-weight:800; color:var(--slate-900); letter-spacing:-1px; }
+.op-kpi-ec .lbl { font-size:11px; color:var(--slate-400); margin-top:4px; font-weight:600; text-transform:uppercase; letter-spacing:.3px; }
+
+/* Operator issue card */
+.op-issue-card {
+  background: var(--slate-50);
+  border-radius: var(--r-md);
+  padding: 16px;
+  border-top: 3px solid var(--primary-mid);
+  border: 1px solid var(--slate-200);
+  border-top-width: 3px;
+}
+.op-issue-card h4 {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 10px;
+}
+.op-issue-card .issue-voice {
+  font-size: 11px;
+  color: var(--slate-500);
+  font-style: italic;
+  border-left: 3px solid #BFDBFE;
+  padding-left: 9px;
+  margin-bottom: 10px;
+  line-height: 1.7;
+  background: var(--primary-light);
+  border-radius: 0 var(--r-sm) var(--r-sm) 0;
+  padding: 8px 10px 8px 12px;
+}
+.op-issue-card ul { list-style:none; padding:0; margin:0; }
+.op-issue-card ul li {
+  font-size: 12px;
+  color: var(--slate-600);
+  padding: 4px 0;
+  display: flex;
+  gap: 6px;
+  line-height: 1.5;
+}
+.op-issue-card ul li::before { content:"✓"; color:var(--primary-mid); font-weight:700; flex-shrink:0; }
+
+/* ── Misc legacy ── */
+.ic-problem  { font-size:12px; color:var(--slate-600); margin-bottom:4px; }
+.ic-action   { font-size:12px; color:var(--primary);   font-weight:600; margin-bottom:4px; }
+.ic-effect   { font-size:12px; color:var(--success);   font-weight:600; }
+.ic-count    { font-size:11px; color:var(--slate-400); }
+.ic-fix-location { background:var(--primary-light); border-radius:var(--r-sm); padding:10px 14px; margin-bottom:10px; font-size:12px; border:1px solid #BFDBFE; }
+.ic-fix-location ul { margin:6px 0 0 18px; }
+.ic-fix-location li { margin-bottom:3px; color:#1E40AF; }
+
+/* EC op/prod cards legacy */
+.ec-op-card { background:#fff; border-radius:var(--r-lg); padding:20px; margin-bottom:16px; box-shadow:var(--shadow-sm); border-left:5px solid var(--success); }
+.ec-op-header { font-size:15px; font-weight:700; color:#065F46; margin-bottom:10px; }
+.ec-op-issue  { background:var(--success-bg); border-radius:var(--r-sm); padding:10px 14px; margin-bottom:8px; font-size:12px; }
+.ec-op-action { background:#F0FDF4; border-radius:var(--r-sm); padding:10px 14px; font-size:12px; }
+
+/* VoC voice sample */
+.ec-voice-sample {
+  font-size: 11px;
+  color: var(--slate-500);
+  font-style: italic;
+  background: var(--warning-bg);
+  padding: 8px 12px;
+  border-radius: var(--r-sm);
+  border-left: 3px solid var(--warning);
+  line-height: 1.7;
+}
+
+/* EC count/urg badges */
+.ec-count-row   { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.ec-count-total { font-size:24px; font-weight:800; color:var(--slate-900); letter-spacing:-1px; }
+.ec-count-unit  { font-size:11px; color:var(--slate-400); margin-top:4px; }
+.ec-urg-badges  { display:flex; gap:6px; flex-wrap:wrap; }
+.ec-urg-badge { font-size:11px; padding:2px 9px; border-radius:12px; font-weight:700; }
+.ec-urg-badge.h { background:var(--danger-bg);   color:#B91C1C; }
+.ec-urg-badge.m { background:var(--warning-bg);  color:#92400E; }
+.ec-urg-badge.l { background:var(--primary-light); color:#1E40AF; }
+
+.ec-barrier-list { list-style:none; margin:0; padding:0; }
+.ec-barrier-list li {
+  font-size:12px; color:var(--slate-600);
+  padding:5px 0;
+  border-bottom:1px dashed var(--slate-100);
+  display:flex; justify-content:space-between; align-items:center;
+}
+.ec-barrier-list li:last-child { border-bottom:none; }
+
+.ec-major-badges { display:flex; gap:6px; flex-wrap:wrap; }
+.ec-major-badge  { font-size:11px; background:var(--purple-bg); color:var(--purple); padding:2px 9px; border-radius:12px; font-weight:600; }
+
+.ec-actions-full { grid-column:1/-1; padding:16px 22px; background:var(--success-bg); border-top:2px solid #A7F3D0; }
+.ec-action-list  { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+@media(max-width:900px) { .ec-action-list { grid-template-columns:1fr; } }
+.ec-action-item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  background: #fff;
+  padding: 11px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid #A7F3D0;
+  font-size: 12px;
+  line-height: 1.5;
+  transition: border-color .15s, box-shadow .15s;
+}
+.ec-action-item:hover { border-color: var(--primary-mid); box-shadow: var(--shadow-xs); }
+.ec-action-icon   { font-size:15px; flex-shrink:0; margin-top:1px; }
+.ec-action-text   { color:var(--slate-700); }
+.ec-action-detail { font-size:11px; color:var(--slate-400); margin-top:3px; }
+
+/* ── Responsive ── */
+@media(max-width:768px) {
+  #main { padding:16px; }
+  .chart-grid { grid-template-columns:1fr; }
+  .modal-grid { grid-template-columns:1fr; }
+  .kpi-grid   { grid-template-columns:repeat(2,1fr); }
+  #header     { padding:0 16px; }
+  #filter-bar { padding:10px 16px; }
+}
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="spinner"></div><p style="margin-top:16px;color:#666;">データ読み込み中...</p></div>
+
+<div id="header">
+  <h1>🏪 店研創意 VOC分析ダッシュボード</h1>
+  <span class="badge" id="data-source-badge">通話データ</span>
+  <span id="load-status">読み込み中...</span>
+</div>
+
+<div id="tab-nav">
+  <button class="tab-btn active" data-tab="dashboard">📊 ダッシュボード</button>
+  <button class="tab-btn" data-tab="voc">📋 VOC管理</button>
+  <button class="tab-btn" data-tab="marketing">📣 マーケティング分析</button>
+  <button class="tab-btn" data-tab="painpoint">⚠️ 問い合わせ・課題分析</button>
+  <button class="tab-btn" data-tab="operator">👤 オペレーター評価</button>
+  <button class="tab-btn" data-tab="ec">🛒 改善レポート</button>
+</div>
+
+<div id="filter-bar">
+  <div class="filter-group"><label>期間From</label><input type="date" id="f-date-from"></div>
+  <div class="filter-group"><label>期間To</label><input type="date" id="f-date-to"></div>
+  <div class="filter-group"><label>大区分</label><select id="f-major"><option value="">すべて</option></select></div>
+  <div class="filter-group"><label>小区分</label><select id="f-minor"><option value="">すべて</option></select></div>
+  <div class="filter-group"><label>顧客属性</label><select id="f-cu-attr"><option value="">すべて</option></select></div>
+  <div class="filter-group"><label>サイト</label><select id="f-site"><option value="">すべて</option></select></div>
+  <div class="filter-group"><label>データ種別</label><select id="f-source"><option value="">すべて</option><option value="call">📞 通話</option><option value="form">📝 フォーム</option></select></div>
+  <div class="filter-group"><label>発生タイミング</label><select id="f-timing"><option value="">すべて</option></select></div>
+  <div class="filter-group"><label>緊急度</label><select id="f-urgency"><option value="">すべて</option><option>高</option><option>中</option><option>低</option></select></div>
+  <button id="btn-reset">リセット</button>
+</div>
+
+<div id="main">
+
+  <!-- DASHBOARD -->
+  <div id="tab-dashboard" class="tab-panel active">
+    <div class="kpi-grid" id="kpi-grid"></div>
+    <div class="chart-grid">
+      <div class="chart-card"><h3>📂 大区分 TOP10</h3><div class="chart-wrap"><canvas id="ch-major"></canvas></div></div>
+      <div class="chart-card"><h3>🎯 解決ステータス分布</h3><div class="chart-wrap"><canvas id="ch-resolve"></canvas></div></div>
+      <div class="chart-card"><h3>🔴 緊急度分布</h3><div class="chart-wrap"><canvas id="ch-urgency"></canvas></div></div>
+      <div class="chart-card"><h3>🌐 問い合わせ元サイト</h3><div class="chart-wrap"><canvas id="ch-site"></canvas></div></div>
+      <div class="chart-card"><h3>⏱ 発生タイミング分布</h3><div class="chart-wrap"><canvas id="ch-timing"></canvas></div></div>
+      <div class="chart-card"><h3>📦 商品カテゴリ TOP10</h3><div class="chart-wrap"><canvas id="ch-prodcat"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- VOC -->
+  <div id="tab-voc" class="tab-panel">
+    <div class="flex-between">
+      <div style="display:flex;gap:8px;align-items:center;">
+        <input type="text" class="search-box" id="voc-search" placeholder="🔍 キーワード検索...">
+        <span id="voc-count" style="font-size:12px;color:#666;"></span>
+      </div>
+      <button class="export-btn" id="btn-export">⬇ CSVエクスポート</button>
+    </div>
+    <div class="tbl-wrap">
+      <table id="voc-table">
+        <thead><tr>
+          <th>日付</th><th>顧客属性</th><th>サイト</th><th>大区分名</th><th>小区分名</th>
+          <th>発生タイミング</th><th>意図要約</th><th>課題要約</th><th>緊急度</th><th>解決ステータス</th>
+        </tr></thead>
+        <tbody id="voc-tbody"></tbody>
+      </table>
+    </div>
+    <div id="pager"></div>
+  </div>
+
+  <!-- MARKETING -->
+  <div id="tab-marketing" class="tab-panel">
+    <div class="kpi-grid" id="mkt-kpi-grid"></div>
+    <div class="chart-grid">
+      <div class="chart-card"><h3>👥 顧客属性分布</h3><div class="chart-wrap"><canvas id="ch-cuattr"></canvas></div></div>
+      <div class="chart-card full"><h3>🎯 意図ランキング TOP15</h3><div class="chart-wrap" style="height:320px"><canvas id="ch-intent"></canvas></div></div>
+    </div>
+    <p class="section-title">📋 FAQ テーブル（小区分 × 件数 × 解決率）</p>
+    <div class="tbl-wrap">
+      <table id="faq-table">
+        <thead><tr><th>小区分名</th><th>大区分名</th><th>件数</th><th>解決件数</th><th>解決率</th></tr></thead>
+        <tbody id="faq-tbody"></tbody>
+      </table>
+    </div>
+    <p class="section-title">🔥 顧客属性 × 大区分 クロス集計</p>
+    <div class="heatmap-wrap"><table class="heatmap-table" id="cross-table"></table></div>
+  </div>
+
+  <!-- PAIN POINT -->
+  <div id="tab-painpoint" class="tab-panel">
+
+    <!-- KPIカード -->
+    <div class="kpi-grid" id="pp-kpi-grid"></div>
+
+    <!-- Section 1: 発生タイミング -->
+    <div class="pp-section">
+      <div class="pp-section-header">⏱ 発生タイミング（選択）別 分析</div>
+      <div class="pp-section-body">
+        <div class="pp-chart-side">
+          <div class="chart-card" style="height:100%">
+            <h3>⏱ 発生タイミング 分布</h3>
+            <div class="chart-wrap" style="height:300px"><canvas id="ch-pp-timing"></canvas></div>
+          </div>
+        </div>
+        <div class="pp-table-side">
+          <div class="chart-card" style="height:100%">
+            <h3>📋 発生タイミング 詳細</h3>
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr><th>発生タイミング</th><th>件数</th><th>🔴 高</th><th>🟡 中</th><th>🔵 低</th><th>解決率</th><th>主な課題</th></tr></thead>
+                <tbody id="pp-timing-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 2: 大カテゴリ -->
+    <div class="pp-section">
+      <div class="pp-section-header">📂 大カテゴリ（大区分）別 分析</div>
+      <div class="pp-section-body">
+        <div class="pp-chart-side">
+          <div class="chart-card" style="height:100%">
+            <h3>📂 大区分 分布</h3>
+            <div class="chart-wrap" style="height:300px"><canvas id="ch-pp-major"></canvas></div>
+          </div>
+        </div>
+        <div class="pp-table-side">
+          <div class="chart-card" style="height:100%">
+            <h3>📋 大区分 詳細</h3>
+            <div class="tbl-wrap">
+              <table>
+                <thead><tr><th>大区分名</th><th>件数</th><th>🔴 高</th><th>🟡 中</th><th>🔵 低</th><th>解決率</th><th>TOP小区分</th></tr></thead>
+                <tbody id="pp-major-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 3: バリア -->
+    <div class="pp-section">
+      <div class="pp-section-header">🚧 Webサイト課題分析</div>
+      <div style="padding:16px 0">
+        <!-- バリア内フィルター -->
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px;align-items:center;background:#f8f9fb;padding:12px 16px;border-radius:10px;">
+          <span style="font-size:13px;font-weight:600;color:#374151;">🔍 絞り込み：</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <label style="font-size:12px;color:#6B7280;">大カテゴリ</label>
+            <select id="f-barrier-major" style="font-size:12px;padding:4px 8px;border:1px solid #D1D5DB;border-radius:6px;background:#fff;">
+              <option value="">すべて</option>
+            </select>
+          </div>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <label style="font-size:12px;color:#6B7280;">発生タイミング</label>
+            <select id="f-barrier-timing" style="font-size:12px;padding:4px 8px;border:1px solid #D1D5DB;border-radius:6px;background:#fff;">
+              <option value="">すべて</option>
+            </select>
+          </div>
+          <button id="btn-barrier-reset" style="font-size:12px;padding:4px 12px;border:1px solid #D1D5DB;border-radius:6px;background:#fff;cursor:pointer;color:#6B7280;">リセット</button>
+          <span id="barrier-filter-count" style="font-size:12px;color:#6B7280;margin-left:auto;"></span>
+        </div>
+        <p class="section-title">📊 課題内容一覧（件数順）</p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>課題要約</th><th>件数</th><th>🔴 高</th><th>🟡 中</th><th>🔵 低</th><th>解決率</th><th>主な推定発生ページ</th></tr></thead>
+            <tbody id="barrier-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- OPERATOR -->
+  <div id="tab-operator" class="tab-panel">
+    <div class="kpi-grid" id="op-kpi-grid"></div>
+    <p class="section-title">📋 オペレーター詳細カード</p>
+    <div class="op-grid" id="op-cards"></div>
+  </div>
+
+  <!-- EC IMPROVEMENT (3-subtab) -->
+  <div id="tab-ec" class="tab-panel">
+    <!-- エグゼクティブサマリー -->
+    <div class="ec-summary" id="ec-summary-box"></div>
+
+    <!-- 施策サブタブナビゲーション -->
+    <div class="ec-subtab-nav">
+      <button class="ec-subtab-btn active" data-subtab="ec-site">🌐 ECサイト改善</button>
+      <button class="ec-subtab-btn" data-subtab="ec-prod">📦 商品改善</button>
+      <button class="ec-subtab-btn" data-subtab="ec-op">👥 オペレーター対応改善</button>
+    </div>
+
+    <!-- ① ECサイト改善パネル -->
+    <div id="ec-subtab-ec-site" class="ec-subtab-panel active">
+      <!-- フィルター＆検索 -->
+      <div class="ec-filter-bar">
+        <span class="ec-filter-label">🔍 絞り込み：</span>
+        <div class="filter-group">
+          <label>優先度</label>
+          <select id="f-ec-priority">
+            <option value="">すべて</option>
+            <option value="高">🔴 高</option>
+            <option value="中">🟡 中</option>
+            <option value="低">🔵 低</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label>ページ検索</label>
+          <input id="f-ec-search" type="text" placeholder="ページ名を入力…" style="width:160px;">
+        </div>
+        <button id="btn-ec-reset" class="ec-reset-btn">リセット</button>
+        <span id="ec-filter-count" class="ec-count-label"></span>
+      </div>
+      <div id="ec-site-cards"></div>
+    </div>
+
+    <!-- ② 商品改善パネル -->
+    <div id="ec-subtab-ec-prod" class="ec-subtab-panel">
+      <div id="ec-prod-cards"></div>
+    </div>
+
+    <!-- ③ オペレーター対応改善パネル -->
+    <div id="ec-subtab-ec-op" class="ec-subtab-panel">
+      <div id="ec-op-section"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL -->
+<div id="modal-overlay">
+  <div id="modal-box">
+    <span id="modal-close">✕</span>
+    <h2 id="modal-title">問い合わせ詳細</h2>
+    <div class="modal-grid" id="modal-body"></div>
+  </div>
+</div>
+
+<div id="voice-modal-overlay">
+  <div id="voice-modal-box">
+    <span id="voice-modal-close">✕</span>
+    <h2 id="voice-modal-title">顧客の生の声</h2>
+    <div id="voice-modal-body"></div>
+    <div id="voice-pager"></div>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// COLUMN DEFINITIONS
+// ==========================================
+const C = {
+  DATE:0, INBOUND:1, CU_TEL:2, ORDER_TEL:3, WEB_ORDER:4, PROD_ORDER:5,
+  PROD_NAME:6, FAX_FLAG:7, OP_NAME:8, CU_ATTR:9, SOURCE_SITE:10,
+  MAJOR_NO:11, MAJOR_NAME:12, MINOR_NO:13, MINOR_NAME:14,
+  INTENT:15, INTENT_SHORT:16, TARGET_FUNC:17,
+  BARRIER:18, BARRIER_SHORT:19, SELF_RESOLVE:20,
+  EST_PAGE:21, TIMING_NL:22, TIMING_SEL:23, URGENCY:24,
+  INTENT_RANK:25, BARRIER_RANK:26, RESOLVE_STATUS:27,
+  SUMMARY:28, CUSTOMER_VOICE:29,
+  OP_SCORE:30, OP_KNOW:31, OP_SYS:32, OP_EXPLAIN:33,
+  OP_EMPATHY:34, OP_LISTEN:35, OP_GOOD:36, OP_IMPROVE:37,
+  CAT_AXIS1:38, CAT_AXIS2:39, PROD_CAT:40
+};
+
+const DATA_URL = 'https://raw.githubusercontent.com/giverydeca/vocdashbord2/refs/heads/main/data/all_merged.csv';
+const FORM_URL = 'https://raw.githubusercontent.com/giverydeca/vocdashbord2/refs/heads/main/data/form_merged.csv';
+// フォームCSV列インデックス
+const FC = {
+  PROD_NAME:0, CU_ATTR:1, SOURCE_SITE:2, MAJOR_NO:3, MAJOR_NAME:4,
+  MINOR_NO:5, MINOR_NAME:6, INTENT:7, INTENT_SHORT:8, TARGET_FUNC:9,
+  BARRIER:10, BARRIER_SHORT:11, SELF_RESOLVE:12, EST_PAGE:13,
+  TIMING_SEL:14, KEYWORDS:15, URGENCY:16, CUSTOMER_VOICE:17, PROD_CAT:18
+};
+// フォーム行を41列形式+[41]=sourceフラグに変換
+function mapFormRow(fr) {
+  const r = new Array(42).fill('');
+  r[C.PROD_NAME]     = fr[FC.PROD_NAME]    || '';
+  r[C.CU_ATTR]       = fr[FC.CU_ATTR]      || '';
+  r[C.SOURCE_SITE]   = fr[FC.SOURCE_SITE]  || '';
+  r[C.MAJOR_NO]      = fr[FC.MAJOR_NO]     || '';
+  r[C.MAJOR_NAME]    = fr[FC.MAJOR_NAME]   || '';
+  r[C.MINOR_NO]      = fr[FC.MINOR_NO]     || '';
+  r[C.MINOR_NAME]    = fr[FC.MINOR_NAME]   || '';
+  r[C.INTENT]        = fr[FC.INTENT]       || '';
+  r[C.INTENT_SHORT]  = fr[FC.INTENT_SHORT] || '';
+  r[C.TARGET_FUNC]   = fr[FC.TARGET_FUNC]  || '';
+  r[C.BARRIER]       = fr[FC.BARRIER]      || '';
+  r[C.BARRIER_SHORT] = fr[FC.BARRIER_SHORT]|| '';
+  r[C.SELF_RESOLVE]  = fr[FC.SELF_RESOLVE] || '';
+  r[C.EST_PAGE]      = fr[FC.EST_PAGE]     || '';
+  r[C.TIMING_SEL]    = fr[FC.TIMING_SEL]  || '';
+  r[C.URGENCY]       = fr[FC.URGENCY]      || '';
+  r[C.CUSTOMER_VOICE]= fr[FC.CUSTOMER_VOICE]||'';
+  r[C.SUMMARY]       = fr[FC.CUSTOMER_VOICE]||''; // 生の声を要約として流用
+  r[C.PROD_CAT]      = fr[FC.PROD_CAT]     || '';
+  r[41]              = 'form'; // ソースフラグ
+  return r;
+}
+
+// 正規オペレーターリスト
+const VALID_OPS = new Set([
+  'たちかわ','かわはら','すが','うえだ','たけなか','おち','にしおか','ひさおか',
+  'あさい','しば','いちかわ','やまだ','つるい','きむら','すずき','まつやま',
+  'かどの','やまさき','もりもと','くろき','むらおか','ふえだ','しんたく',
+  'まるおか','しみず','にしやま','ながたけ','とみた','ながかわ','いしはら',
+  'おおや','たかはし','たまもり','よしだ','かわばた','やまじ','よこやま',
+  'うづき','ほり','おかもと','さとい','かたやま','もり','かたぎり',
+  'はせがわ','みずぐち','やすだ','うえの'
+]);
+
+// 発生タイミング正規化マップ（01〜07のみ有効）
+// cleanTiming() がすべての入力値を正規化する
+const TIMING_CANONICAL = [
+  '01 ログイン時',
+  '02 注文前商品選定中',
+  '03 注文手続き中',
+  '04 注文後出荷前',
+  '05 出荷後到着前',
+  '06 到着後',
+  '07 不明'
+];
+
+// バリア「課題なし」キーワード（部分一致で判定）
+const NO_BARRIER_KEYWORDS = [
+  '確認できず','確認できない','発生していない','言及なし','根拠なし',
+  '特定不可','確認不可','会話から不明','対象外','バリア不明',
+  '課題なし','障害なし','障壁なし','問題なし','困りごとなし',
+  'Web課題なし','Webバリアなし','Web起因なし','Webで状況確認できない',
+  '担当者不在のため','データ未反映のため',
+  'はなし','発言なし','話題なし','申告なし','言及がなく',
+  'ではなく担当者','取次のため','会話で不明','なく不明',
+  '発生なし','FAX注文のためWeb','電話対応のためWeb','電話注文のためWeb',
+  '問題ではない','課題ではない','発話なし'
+];
+
+let allRows = [];
+let filteredRows = [];
+let vocPage = 1;
+const VOC_PAGE_SIZE = 50;
+const charts = {};
+
+// ==========================================
+// CHART HELPERS
+// ==========================================
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+function topN(arr, n) { return arr.sort((a,b)=>b[1]-a[1]).slice(0,n); }
+
+function count(rows, colFn) {
+  const m = {};
+  rows.forEach(r => {
+    const v = colFn(r);
+    if (!v || v==='不明' || v==='') return;
+    v.split(';').forEach(s => {
+      const k = s.trim();
+      if (k && k!=='不明' && k!=='なし') m[k]=(m[k]||0)+1;
+    });
+  });
+  return Object.entries(m);
+}
+
+// 緊急度に対応する色を返す
+function urgencyColor(label) {
+  if (label==='高') return '#EF4444';
+  if (label==='中') return '#F59E0B';
+  if (label==='低') return '#2563EB';
+  return '#9CA3AF';
+}
+
+const SINGLE_COLOR = '#2563EB'; // 単色グラフ用
+const CHART_COLORS = ['#2563EB','#10B981','#F59E0B','#EF4444','#8B5CF6','#06B6D4','#F97316','#EC4899','#84CC16','#14B8A6','#A78BFA','#FB923C','#34D399','#60A5FA','#FBBF24'];
+
+// 横棒グラフ（単色）
+function barChartSingle(id, labels, data, opts={}) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: opts.label || '件数',
+        data,
+        backgroundColor: SINGLE_COLOR,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend:{display:false}, tooltip:{callbacks:{label:c=>` ${c.parsed.x}件`}} },
+      scales: {
+        x: { grid:{display:false}, ticks:{font:{size:11}} },
+        y: { ticks:{font:{size:11}} }
+      }
+    }
+  });
+}
+
+// 緊急度対応ドーナツ
+function urgencyDoughnutChart(id, labels, data) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  const colors = labels.map(l => urgencyColor(l));
+  charts[id] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets:[{data, backgroundColor:colors, borderWidth:2}] },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:14}}}
+    }
+  });
+}
+
+// 汎用ドーナツ
+function doughnutChart(id, labels, data) {
+  destroyChart(id);
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  charts[id] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets:[{data, backgroundColor:CHART_COLORS, borderWidth:2}] },
+    options: {
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:14}}}
+    }
+  });
+}
+
+// 解決ステータス用ドーナツ（色固定）
+function resolveStatusColors(label) {
+  if (label==='解決') return '#10B981';
+  if (label==='未解決') return '#EF4444';
+  if (label.includes('折り返し')) return '#F59E0B';
+  return '#9CA3AF';
+}
+
+// ==========================================
+// FILTERS
+// ==========================================
+function applyFilters() {
+  const dateFrom = document.getElementById('f-date-from').value;
+  const dateTo   = document.getElementById('f-date-to').value;
+  const major    = document.getElementById('f-major').value;
+  const cuAttr   = document.getElementById('f-cu-attr').value;
+  const site     = document.getElementById('f-site').value;
+  const urgency  = document.getElementById('f-urgency').value;
+  const timing   = document.getElementById('f-timing').value;
+  const srcFilter = document.getElementById('f-source') ? document.getElementById('f-source').value : '';
+
+  filteredRows = allRows.filter(r => {
+    const dateStr = r[C.DATE] ? r[C.DATE].slice(0,8) : '';
+    if (dateFrom && dateStr && dateStr < dateFrom.replace(/-/g,'')) return false;
+    if (dateTo   && dateStr && dateStr > dateTo.replace(/-/g,''))   return false;
+    if (major  && !r[C.MAJOR_NAME].includes(major))   return false;
+    if (cuAttr && r[C.CU_ATTR] !== cuAttr)             return false;
+    const minorVal = document.getElementById('f-minor') ? document.getElementById('f-minor').value : '';
+    if (minorVal && !(r[C.MINOR_NAME]||'').split(';').map(s=>s.trim()).includes(minorVal)) return false;
+    if (site   && r[C.SOURCE_SITE] !== site)           return false;
+    if (urgency && !r[C.URGENCY].includes(urgency))    return false;
+    if (timing) {
+      const timingVals = (r[C.TIMING_SEL]||'').split(';').map(s=>cleanTiming(s)).filter(Boolean);
+      if (!timingVals.includes(timing)) return false;
+    }
+    if (srcFilter && r[41] !== srcFilter) return false;
+    return true;
+  });
+  renderAll();
+}
+
+function populateFilters() {
+  const majors = [...new Set(allRows.map(r=>(r[C.MAJOR_NAME]||'').split(';')[0].trim()).filter(v=>v&&v!=='不明'))].sort();
+  const attrs  = [...new Set(allRows.map(r=>r[C.CU_ATTR]).filter(v=>v&&v!=='不明'))].sort();
+  const sites  = [...new Set(allRows.map(r=>r[C.SOURCE_SITE]).filter(v=>v&&v!=='不明'))].sort();
+  const fMajor = document.getElementById('f-major');
+  majors.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;fMajor.appendChild(o);});
+  const fAttr = document.getElementById('f-cu-attr');
+  attrs.forEach(a=>{const o=document.createElement('option');o.value=a;o.textContent=a;fAttr.appendChild(o);});
+  const fSite = document.getElementById('f-site');
+  sites.forEach(s=>{const o=document.createElement('option');o.value=s;o.textContent=s;fSite.appendChild(o);});
+  // 小区分フィルター（最初の小区分のみ抽出）
+  const minors = [...new Set(allRows.map(r=>(r[C.MINOR_NAME]||'').split(';')[0].trim()).filter(v=>v&&v!=='不明'))].sort();
+  const fMinor = document.getElementById('f-minor');
+  if(fMinor) minors.forEach(m=>{const o=document.createElement('option');o.value=m;o.textContent=m;fMinor.appendChild(o);});
+  // 発生タイミングフィルター
+  // 発生タイミングは正規化済み01〜07を固定表示
+  const fTiming = document.getElementById('f-timing');
+  if(fTiming){
+    fTiming.innerHTML='<option value="">すべて</option>';
+    TIMING_CANONICAL.forEach(t=>{const o=document.createElement('option');o.value=t;o.textContent=t;fTiming.appendChild(o);});
+  }
+}
+
+// ==========================================
+// RENDER ALL
+// ==========================================
+// Web自己解決可能性 正規化関数
+// 各エントリを 高/中/低/不可/不明 に分類
+// セミコロン区切りの複合値は「最もポジティブ」な値を採用
+// ==========================================
+function normSRToken(t) {
+  t = t.trim();
+  if (!t) return '不明';
+  // Web無関係・対象外
+  if (/不要|対象外|Web.*外|Web.*無関係|Web上の障害|Web課題なし/.test(t)) return '不明';
+  // 不可
+  if (/不可能/.test(t)) return '不可';
+  if (t === '不可') return '不可';
+  if (/不可（/.test(t)) return '不可';
+  if (t === 'なし') return '不可';
+  if (t === 'いいえ') return '不可';
+  if (/電話のみ$|電話対応のみ$/.test(t)) return '不可';
+  // 高（高い含む、条件付き含む）
+  if (/高/.test(t)) return '高';
+  if (/^はい/.test(t)) return '高';
+  // 可能（一部可能・部分的に可能を除く、不可を除く）
+  if (/可能/.test(t) && !/不可/.test(t) && !/一部可能|部分的に可能/.test(t)) return '高';
+  // 要改善で可能 → 中（条件付き）
+  if (/要改善で可能|条件付きで可能/.test(t)) return '高';
+  // 一部可能でも「改善/案内/ヘルプ/表示があれば」等の条件があれば店研創意側改善で解決可能→高
+  if (/一部可能/.test(t) && /改善|案内|あれば|ヘルプ|記載|掲載|表示|整備|導線|案内/.test(t)) return '高';
+  if (/部分的に可能/.test(t) && /改善|あれば|整備/.test(t)) return '高';
+  // それ以外の一部可能 → 中
+  if (/一部可能|部分的に可能/.test(t)) return '中';
+  if (t === '中') return '中';
+  if (/^中[（(]/.test(t)) return '中';
+  // 低
+  if (/低い/.test(t)) return '低';
+  if (/^低/.test(t)) return '低';
+  if (/低[（(]/.test(t)) return '低';
+  if (/困難|難しい/.test(t)) return '低';
+  return '不明';
+}
+function normSelfResolve(raw) {
+  if (!raw) return '不明';
+  const rank = {'高':4,'中':3,'低':2,'不可':1,'不明':0};
+  let best = '不明';
+  for (const t of raw.split(';')) {
+    const c = normSRToken(t);
+    if (rank[c] > rank[best]) best = c;
+  }
+  return best;
+}
+
+// ==========================================
+function renderAll() {
+  vocPage = 1;
+  renderDashboard();
+  renderVoc();
+  renderMarketing();
+  renderPainPoint();
+  renderOperator();
+  renderEC();
+}
+
+// ==========================================
+// DASHBOARD
+// ==========================================
+function renderDashboard() {
+  const rows = filteredRows;
+  const total = rows.length;
+  const resolved = rows.filter(r=>r[C.RESOLVE_STATUS]==='解決').length;
+  const resolveRate = total ? (resolved/total*100).toFixed(1) : 0;
+  const highUrgency = rows.filter(r=>(r[C.URGENCY]||'').includes('高')).length;
+  const opScores = rows.map(r=>parseFloat(r[C.OP_SCORE])).filter(v=>!isNaN(v)&&v>0);
+  const avgOp = opScores.length ? (opScores.reduce((a,b)=>a+b,0)/opScores.length).toFixed(2) : '―';
+  // normSelfResolve による分類カウント（高/中/低/不可）
+  const srCounts = {高:0, 中:0, 低:0, 不可:0, 不明:0};
+  rows.forEach(r => { const c = normSelfResolve(r[C.SELF_RESOLVE]||''); srCounts[c] = (srCounts[c]||0)+1; });
+  const selfHigh = srCounts['高'];
+  const selfMid  = srCounts['中'];
+  const selfHighRate = total ? (selfHigh/total*100).toFixed(1) : 0;
+
+  const callCount = rows.filter(r=>r[41]!=='form').length;
+  const formCount = rows.filter(r=>r[41]==='form').length;
+  document.getElementById('kpi-grid').innerHTML = `
+    <div class="kpi-card"><div class="kpi-label">総問い合わせ件数</div><div class="kpi-value">${total.toLocaleString()}</div><div class="kpi-sub">📞${callCount} / 📝${formCount}</div></div>
+    <div class="kpi-card green"><div class="kpi-label">解決率</div><div class="kpi-value">${resolveRate}<span style="font-size:14px">%</span></div><div class="kpi-sub">${resolved}件 解決</div></div>
+    <div class="kpi-card"><div class="kpi-label">平均OP評価</div><div class="kpi-value">${avgOp}</div><div class="kpi-sub">/ 5.0点</div></div>
+    <div class="kpi-card red"><div class="kpi-label">高緊急度件数</div><div class="kpi-value">${highUrgency.toLocaleString()}</div><div class="kpi-sub">${total?(highUrgency/total*100).toFixed(1):0}%</div></div>
+    <div class="kpi-card yellow"><div class="kpi-label">Web自己解決可能（高）</div><div class="kpi-value">${selfHighRate}<span style="font-size:14px">%</span></div><div class="kpi-sub">${selfHigh}件 ／ 中:${selfMid}件</div></div>
+  `;
+
+  // 大区分 TOP10（単色）
+  const majorData = topN(count(rows, r=>r[C.MAJOR_NAME]), 10);
+  barChartSingle('ch-major', majorData.map(d=>d[0]), majorData.map(d=>d[1]));
+
+  // 解決ステータス（色固定ドーナツ）
+  const resolveData = count(rows, r=>r[C.RESOLVE_STATUS]||'不明');
+  destroyChart('ch-resolve');
+  const rCtx = document.getElementById('ch-resolve');
+  if (rCtx) {
+    const labels = resolveData.map(d=>d[0]);
+    charts['ch-resolve'] = new Chart(rCtx, {
+      type:'doughnut',
+      data:{labels, datasets:[{data:resolveData.map(d=>d[1]), backgroundColor:labels.map(l=>resolveStatusColors(l)), borderWidth:2}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'right',labels:{font:{size:11},boxWidth:14}}}}
+    });
+  }
+
+  // 緊急度（高=赤 中=黄 低=青）
+  const urgencyRaw = {};
+  rows.forEach(r => {
+    const u = r[C.URGENCY] || '';
+    u.split(';').forEach(s => {
+      const k = s.trim();
+      if (k && k!=='不明') urgencyRaw[k]=(urgencyRaw[k]||0)+1;
+    });
+  });
+  const urgOrder = ['高','中','低'];
+  const urgLabels = urgOrder.filter(u=>urgencyRaw[u]);
+  const urgData   = urgLabels.map(u=>urgencyRaw[u]);
+  urgencyDoughnutChart('ch-urgency', urgLabels, urgData);
+
+  // 問い合わせ元サイト（ドーナツ）
+  const siteData = count(rows, r=>r[C.SOURCE_SITE]);
+  doughnutChart('ch-site', siteData.map(d=>d[0]), siteData.map(d=>d[1]));
+
+  // 発生タイミング（単色・数字プレフィックスを除去・不正項目除外）
+  const timingRaw = {};
+  rows.forEach(r => {
+    const t = r[C.TIMING_SEL] || '';
+    t.split(';').forEach(s => {
+      const norm = cleanTiming(s.trim());
+      if (!norm) return;
+      timingRaw[norm]=(timingRaw[norm]||0)+1;
+    });
+  });
+  // 07 不明 は除外してグラフ表示
+  const timingEntries = TIMING_CANONICAL.filter(k=>k!=='07 不明' && timingRaw[k]).map(k=>[k, timingRaw[k]]);
+  const timingData = timingEntries.sort((a,b)=>b[1]-a[1]);
+  barChartSingle('ch-timing', timingData.map(d=>d[0]), timingData.map(d=>d[1]));
+
+  // 商品カテゴリ TOP10（単色）
+  const prodCatData = topN(count(rows, r=>r[C.PROD_CAT]), 10);
+  barChartSingle('ch-prodcat', prodCatData.map(d=>d[0]), prodCatData.map(d=>d[1]));
+}
+
+// ==========================================
+// VOC TABLE
+// ==========================================
+function renderVoc() {
+  const search = (document.getElementById('voc-search').value||'').toLowerCase();
+  let rows = filteredRows;
+  if (search) rows = rows.filter(r=>r.some(v=>(v||'').toLowerCase().includes(search)));
+  document.getElementById('voc-count').textContent = `${rows.length}件`;
+
+  const total = rows.length;
+  const pages = Math.ceil(total/VOC_PAGE_SIZE);
+  if (vocPage>pages) vocPage=1;
+  const start = (vocPage-1)*VOC_PAGE_SIZE;
+  const pageRows = rows.slice(start, start+VOC_PAGE_SIZE);
+
+  const tbody = document.getElementById('voc-tbody');
+  tbody.innerHTML='';
+  pageRows.forEach((r,ri)=>{
+    const tr = document.createElement('tr');
+    const date = r[C.DATE] ? r[C.DATE].slice(0,4)+'/'+r[C.DATE].slice(4,6)+'/'+r[C.DATE].slice(6,8) : '―';
+    const urgency = r[C.URGENCY] ? r[C.URGENCY].split(';')[0] : '―';
+    const status = r[C.RESOLVE_STATUS]||'―';
+    const timingDisp = (r[C.TIMING_SEL]||'').split(';').map(s=>cleanTiming(s)).filter(Boolean).join(', ') || '―';
+    const srcLabel = r[41]==='form' ? '<span style="font-size:10px;background:#e0f2fe;color:#0369a1;border-radius:3px;padding:1px 4px">📝</span>' : '<span style="font-size:10px;background:#dcfce7;color:#166534;border-radius:3px;padding:1px 4px">📞</span>';
+    tr.innerHTML=`
+      <td>${date} ${srcLabel}</td>
+      <td>${r[C.CU_ATTR]||'―'}</td>
+      <td>${r[C.SOURCE_SITE]||'―'}</td>
+      <td>${(r[C.MAJOR_NAME]||'―').split(';')[0]}</td>
+      <td>${(r[C.MINOR_NAME]||'―').split(';')[0]}</td>
+      <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px">${timingDisp}</td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r[C.INTENT_SHORT]||'―'}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r[C.BARRIER_SHORT]||'―'}</td>
+      <td><span class="badge-urgency ${urgency}">${urgency}</span></td>
+      <td><span class="badge-resolve ${status}">${status}</span></td>
+    `;
+    tr.addEventListener('click',()=>openModal(start+ri,rows));
+    tbody.appendChild(tr);
+  });
+
+  const pager = document.getElementById('pager');
+  pager.innerHTML='';
+  const maxBtn=7;
+  let s=Math.max(1,vocPage-3), e=Math.min(pages,s+maxBtn-1);
+  if(e-s<maxBtn-1) s=Math.max(1,e-maxBtn+1);
+  if(s>1){const b=document.createElement('button');b.className='page-btn';b.textContent='«';b.onclick=()=>{vocPage=1;renderVoc();};pager.appendChild(b);}
+  for(let p=s;p<=e;p++){
+    const b=document.createElement('button');b.className='page-btn'+(p===vocPage?' active':'');
+    b.textContent=p;b.onclick=(()=>{const pp=p;return()=>{vocPage=pp;renderVoc();}})();pager.appendChild(b);
+  }
+  if(e<pages){const b=document.createElement('button');b.className='page-btn';b.textContent='»';b.onclick=()=>{vocPage=pages;renderVoc();};pager.appendChild(b);}
+}
+
+function openModal(idx, rows) {
+  const r = rows[idx]; if(!r) return;
+  const date = r[C.DATE] ? r[C.DATE].slice(0,4)+'/'+r[C.DATE].slice(4,6)+'/'+r[C.DATE].slice(6,8) : '―';
+  const urgency = r[C.URGENCY] ? r[C.URGENCY].split(';')[0] : '―';
+  const status = r[C.RESOLVE_STATUS]||'―';
+  document.getElementById('modal-title').innerHTML=
+    `<span class="badge-urgency ${urgency}" style="font-size:12px">${urgency}</span>
+     <span class="badge-resolve ${status}" style="font-size:12px;margin-left:6px">${status}</span>
+     ${date} / ${r[C.CU_ATTR]||''} / ${(r[C.MAJOR_NAME]||'').split(';')[0]}`;
+  const fields=[
+    ['意図(Intent)',r[C.INTENT]],
+    ['対象機能',r[C.TARGET_FUNC]],
+    ['バリア(Barrier)',r[C.BARRIER]],
+    ['課題要約',r[C.BARRIER_SHORT]],
+    ['Web自己解決可能性',r[C.SELF_RESOLVE]],
+    ['推定発生ページ',r[C.EST_PAGE]],
+    ['発生タイミング',r[C.TIMING_SEL]],
+    ['OP評価（総合）',r[C.OP_SCORE]?`${r[C.OP_SCORE]}点`:'―'],
+    ['会話要約',r[C.SUMMARY],true],
+    ['顧客の生の声',r[C.CUSTOMER_VOICE],true],
+    ['OP良かった点',r[C.OP_GOOD],true],
+    ['OP改善点',r[C.OP_IMPROVE],true],
+  ];
+  document.getElementById('modal-body').innerHTML=fields.map(([label,val,full])=>`
+    <div class="modal-field${full?' full':''}"><label>${label}</label><p>${val||'―'}</p></div>
+  `).join('');
+  document.getElementById('modal-overlay').style.display='block';
+}
+
+// ==========================================
+// MARKETING
+// ==========================================
+function renderMarketing() {
+  const rows = filteredRows;
+  const attrCounts = count(rows, r=>r[C.CU_ATTR]);
+  const siteCounts = count(rows, r=>r[C.SOURCE_SITE]);
+  document.getElementById('mkt-kpi-grid').innerHTML=
+    attrCounts.slice(0,4).map(([k,v])=>`<div class="kpi-card"><div class="kpi-label">${k}</div><div class="kpi-value">${v}</div></div>`).join('')+
+    `<div style="grid-column:1/-1;height:0;border-top:1px dashed var(--slate-200);margin:2px 0;"></div>`+
+    siteCounts.slice(0,3).map(([k,v])=>`<div class="kpi-card green"><div class="kpi-label">${k}</div><div class="kpi-value">${v}</div></div>`).join('');
+
+  // 顧客属性（ドーナツ）
+  const attrTop = topN([...attrCounts],6);
+  doughnutChart('ch-cuattr', attrTop.map(d=>d[0]), attrTop.map(d=>d[1]));
+
+  // 意図 TOP15（単色）
+  const intentData = topN(count(rows, r=>r[C.INTENT_SHORT]),15);
+  barChartSingle('ch-intent', intentData.map(d=>d[0]), intentData.map(d=>d[1]));
+
+  // FAQ テーブル
+  const faqMap = {};
+  rows.forEach(r=>{
+    const minor=(r[C.MINOR_NAME]||'不明').split(';')[0].trim();
+    const major=(r[C.MAJOR_NAME]||'不明').split(';')[0].trim();
+    if(!faqMap[minor]) faqMap[minor]={major,count:0,resolved:0};
+    faqMap[minor].count++;
+    if(r[C.RESOLVE_STATUS]==='解決') faqMap[minor].resolved++;
+  });
+  const faqRows=Object.entries(faqMap).sort((a,b)=>b[1].count-a[1].count).slice(0,30);
+  document.getElementById('faq-tbody').innerHTML=faqRows.map(([minor,d])=>`
+    <tr><td>${minor}</td><td>${d.major}</td><td>${d.count}</td><td>${d.resolved}</td>
+    <td>${d.count?(d.resolved/d.count*100).toFixed(0)+'%':'―'}</td></tr>
+  `).join('');
+
+  // クロス集計
+  const attrs=[...new Set(rows.map(r=>r[C.CU_ATTR]).filter(v=>v&&v!=='不明'&&v!==''))].slice(0,5);
+  const majors=[...new Set(rows.map(r=>(r[C.MAJOR_NAME]||'').split(';')[0].trim()).filter(v=>v&&v!=='不明'))].sort((a,b)=>{
+    const ca=rows.filter(r=>r[C.MAJOR_NAME].includes(a)).length;
+    const cb=rows.filter(r=>r[C.MAJOR_NAME].includes(b)).length;
+    return cb-ca;
+  }).slice(0,8);
+  const crossMap={};
+  rows.forEach(r=>{
+    const a=r[C.CU_ATTR]; const m=(r[C.MAJOR_NAME]||'').split(';')[0].trim();
+    if(!crossMap[a]) crossMap[a]={};
+    crossMap[a][m]=(crossMap[a][m]||0)+1;
+  });
+  const maxVal=Math.max(...attrs.flatMap(a=>majors.map(m=>crossMap[a]?.[m]||0)));
+  document.getElementById('cross-table').innerHTML=`
+    <tr><th>顧客属性 \\ 大区分</th>${majors.map(m=>`<th style="font-size:10px">${m}</th>`).join('')}</tr>
+    ${attrs.map(a=>`<tr><td><b>${a}</b></td>${majors.map(m=>{
+      const v=crossMap[a]?.[m]||0;
+      const alpha=maxVal?Math.round(v/maxVal*100)/100:0;
+      return `<td style="background:rgba(37,99,235,${alpha*0.7+0.05});color:${alpha>0.5?'#fff':'inherit'}">${v||''}</td>`;
+    }).join('')}</tr>`).join('')}
+  `;
+}
+
+
+// ==========================================
+// BARRIER NORMALIZATION
+// 表記ゆれの異なる課題要約を標準形に統一するルールテーブル
+// ==========================================
+const BARRIER_NORMALIZE_RULES = [
+  // ── 在庫・入荷 ────────────────────────────
+  {
+    canon: '在庫数・入荷予定がWebで不明',
+    kws: ['在庫数','在庫','入荷']
+  },
+  // ── 出荷・配送状況 ────────────────────────
+  {
+    canon: 'Web上で出荷・配送状況が不明',
+    kws: ['出荷状況','配送状況','発送状況']
+  },
+  // ── 追跡・伝票番号 ────────────────────────
+  {
+    canon: '追跡・伝票番号がWebで確認できない',
+    kws: ['追跡','伝票番号','送り状']
+  },
+  // ── ログイン・認証エラー ──────────────────
+  {
+    canon: 'ログイン不可・認証エラー',
+    kws: ['ログインできない','ログイン不可','ログインエラー','登録情報不一致でログイン','ログイン情報が分からない','認証エラー','パスワード','セキュアキー']
+  },
+  // ── 注文確定・確定ボタン ──────────────────
+  {
+    canon: '注文確定ボタンが機能しない',
+    kws: ['確定ボタン','注文ボタン','カートに進め','決済ボタン']
+  },
+  // ── 注文履歴・変更・キャンセル ────────────
+  {
+    canon: '注文変更・キャンセルがWebで完結しない',
+    kws: ['注文変更','キャンセル','注文後の変更']
+  },
+  // ── カタログ・DM停止 ──────────────────────
+  {
+    canon: 'カタログ・DM停止がWebで完結しない',
+    kws: ['カタログ停止','DM停止','カタログ解除','DM解除','カタログ受取']
+  },
+  // ── 注文番号・履歴不明 ────────────────────
+  {
+    canon: '注文番号・履歴がWebで確認できない',
+    kws: ['注文番号不明','注文番号が分からない','注文履歴が確認できない','履歴特定できない','注文番号不明で履歴特定']
+  },
+  // ── 支払い方法・NP掛け払い ────────────────
+  {
+    canon: 'NP掛け払い・支払方法がWeb上で不明',
+    kws: ['NP掛け払い','支払方法','支払い方法','掛け払い','後払い']
+  },
+  // ── 配送先・住所変更 ──────────────────────
+  {
+    canon: '配送先変更・住所変更がWebで完結しない',
+    kws: ['配送先変更','住所変更','お届け先変更','届け先変更']
+  },
+  // ── 在庫確認方法 ──────────────────────────
+  {
+    canon: '在庫数・在庫状況がWebで不明',
+    kws: ['在庫確認方法','Web上の在庫確認','在庫確認ができない']
+  },
+  // ── 停止手続き ────────────────────────────
+  {
+    canon: 'Web上で停止・解除手続きが不明',
+    kws: ['停止手続き','解除手続き','停止方法','解除方法']
+  },
+];
+
+/**
+ * 課題要約テキストを正規化する
+ * - 入力: 生の BARRIER_SHORT 文字列（セミコロン分割済みの1要素）
+ * - 出力: 標準形文字列（マッチしない場合は元のテキストをそのまま返す）
+ * - ルール適用順: BARRIER_NORMALIZE_RULES の先頭から検索し、最初にマッチしたルールを使用
+ *   ただし「在庫数・入荷予定がWebで不明」と「在庫数・在庫状況がWebで不明」は
+ *   入荷キーワードが有れば前者、なければ後者に振り分ける
+ */
+function normalizeBarrier(raw) {
+  if (!raw) return raw;
+  const t = raw.trim();
+  if (!t) return t;
+  // ルール順に全キーワードを OR 判定
+  for (const rule of BARRIER_NORMALIZE_RULES) {
+    if (rule.kws.some(kw => t.includes(kw))) {
+      // 在庫系の2ルール：入荷キーワードがあれば「入荷予定」側、なければ「在庫状況」側
+      if (rule.canon === '在庫数・在庫状況がWebで不明') {
+        if (t.includes('入荷')) continue; // 次のルールを使わせる（前のルールで処理済み）
+      }
+      return rule.canon;
+    }
+  }
+  return t; // マッチなし → 元のテキストを返す
+}
+
+// ==========================================
+// PAIN POINT
+// ==========================================
+function isNoBarrier(text) {
+  if (!text) return true;
+  const t = text.trim();
+  if (t === '') return true;
+  // 短い完全一致
+  if (t === 'なし' || t === '不明' || t === '該当なし' || t === '-' || t === '―' || t === 'N/A') return true;
+  // 「〜なし」で終わるものはすべてバリアなし（Web操作に関する課題なし 等）
+  if (t.endsWith('なし')) return true;
+  // キーワード部分一致（課題なしパターン）
+  return NO_BARRIER_KEYWORDS.some(kw => t.includes(kw));
+}
+
+// タイミング正規化（01〜07の正式名称に統一、それ以外は07 不明にマッピング）
+function cleanTiming(raw) {
+  if (!raw) return null;
+  const t = raw.trim();
+  if (!t) return null;
+
+  // 既に「01 〜」形式の場合はコードで正規化
+  const codeMatch = t.match(/^(0[1-7])[\s　]/);
+  if (codeMatch) {
+    const codeMap = {
+      '01':'01 ログイン時','02':'02 注文前商品選定中','03':'03 注文手続き中',
+      '04':'04 注文後出荷前','05':'05 出荷後到着前','06':'06 到着後','07':'07 不明'
+    };
+    return codeMap[codeMatch[1]] || '07 不明';
+  }
+
+  // キーワードで正規化（優先順位順）
+  if (t.includes('ログイン') || t.includes('新規登録') || t.includes('登録時')) return '01 ログイン時';
+  if (t.includes('商品選定') || (t.includes('注文') && t.includes('前') && !t.includes('後') && !t.includes('手続'))) return '02 注文前商品選定中';
+  if (t.includes('注文手続') || t.includes('支払') || t.includes('決済') ||
+      (t === '注文時') || t.includes('注文ボタン') || t.includes('注文確認へ進む') || t.includes('注文へ進む')) return '03 注文手続き中';
+  if (t.includes('注文後') || t.includes('出荷前') || t.includes('注文直後')) return '04 注文後出荷前';
+  if (t.includes('出荷後') || t.includes('配送前') || t.includes('到着前') || t.includes('発送後')) return '05 出荷後到着前';
+  if (t.includes('到着後') || t.includes('配送後') || t.includes('受取後') || t.includes('受け取り後') || t.includes('開梱')) return '06 到着後';
+  return '07 不明';
+}
+
+function renderPainPoint() {
+  const rows = filteredRows;
+
+  // ========== KPI ==========
+  const withBarrier = rows.filter(r => !isNoBarrier((r[C.BARRIER_SHORT]||'').split(';')[0].trim()));
+  const majorSet = new Set(rows.map(r=>(r[C.MAJOR_NAME]||'').split(';')[0].trim()).filter(v=>v&&v!=='不明'));
+  const timingSet = new Set();
+  rows.forEach(r=>{
+    (r[C.TIMING_SEL]||'').split(';').forEach(s=>{ const c=cleanTiming(s); if(c) timingSet.add(c); });
+  });
+  document.getElementById('pp-kpi-grid').innerHTML = `
+    <div class="kpi-card red"><div class="kpi-label">Web課題検出件数</div><div class="kpi-value">${withBarrier.length.toLocaleString()}</div><div class="kpi-sub">課題あり</div></div>
+    <div class="kpi-card"><div class="kpi-label">大カテゴリ数</div><div class="kpi-value">${majorSet.size}</div><div class="kpi-sub">区分</div></div>
+    <div class="kpi-card yellow"><div class="kpi-label">発生タイミング種別</div><div class="kpi-value">${timingSet.size}</div><div class="kpi-sub">タイプ</div></div>
+    <div class="kpi-card green"><div class="kpi-label">解決率（全体）</div><div class="kpi-value">${rows.length?(rows.filter(r=>r[C.RESOLVE_STATUS]==='解決').length/rows.length*100).toFixed(1):0}<span style="font-size:14px">%</span></div></div>
+  `;
+
+  // ========== Section 1: 発生タイミング ==========
+  const timingMap = {};
+  rows.forEach(r => {
+    const timingRaw = r[C.TIMING_SEL] || '';
+    const urgency = r[C.URGENCY] || '低';
+    const barrier = (r[C.BARRIER_SHORT]||'').split(';')[0].trim();
+    const resolved = r[C.RESOLVE_STATUS] === '解決';
+    timingRaw.split(';').forEach(s => {
+      const k = cleanTiming(s);
+      if (!k) return;
+      if (!timingMap[k]) timingMap[k] = {count:0, high:0, mid:0, low:0, barriers:{}, resolved:0};
+      timingMap[k].count++;
+      if (urgency.includes('高')) timingMap[k].high++;
+      else if (urgency.includes('中')) timingMap[k].mid++;
+      else timingMap[k].low++;
+      if (!isNoBarrier(barrier)) timingMap[k].barriers[barrier] = (timingMap[k].barriers[barrier]||0)+1;
+      if (resolved) timingMap[k].resolved++;
+    });
+  });
+  // 1件以下は不正として除外
+  const timingList = Object.entries(timingMap).filter(([k,d])=>d.count>1).sort((a,b)=>b[1].count-a[1].count);
+
+  // 円グラフ（発生タイミング）
+  destroyChart('ch-pp-timing');
+  const tCtx = document.getElementById('ch-pp-timing');
+  if (tCtx && timingList.length) {
+    const _timingRows = rows;
+    charts['ch-pp-timing'] = new Chart(tCtx, {
+      type: 'doughnut',
+      data: {
+        labels: timingList.map(d=>d[0]),
+        datasets: [{ data: timingList.map(d=>d[1].count), backgroundColor: CHART_COLORS, borderWidth:2 }]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ position:'right', labels:{ font:{size:10}, boxWidth:12 } } },
+        onClick: (e, elements) => {
+          if (elements.length > 0) {
+            const idx = elements[0].index;
+            const label = timingList[idx][0];
+            openVoiceModal(label, _timingRows, 'timing');
+          }
+        }
+      }
+    });
+    tCtx.style.cursor = 'pointer';
+    tCtx.title = 'クリックして生の声を確認';
+  }
+
+  // 詳細テーブル（発生タイミング）
+  document.getElementById('pp-timing-tbody').innerHTML = timingList.map(([k,d]) => {
+    const topBarrierRaw = Object.entries(d.barriers).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
+    const topBarrier = topBarrierRaw && !isNoBarrier(topBarrierRaw) ? topBarrierRaw : '―';
+    const resolveRate = d.count ? (d.resolved/d.count*100).toFixed(0)+'%' : '―';
+    return `<tr data-timing="${k}" class="clickable-row" style="cursor:pointer" title="クリックして生の声を確認">
+      <td><b>${k}</b> <span style="font-size:10px;color:#888">🔍</span></td>
+      <td>${d.count}</td>
+      <td><span style="color:#B91C1C;font-weight:600">${d.high}</span></td>
+      <td><span style="color:#92400E;font-weight:600">${d.mid}</span></td>
+      <td><span style="color:#1e40af;font-weight:600">${d.low}</span></td>
+      <td>${resolveRate}</td>
+      <td style="max-width:200px;font-size:11px;color:#555">${topBarrier}</td>
+    </tr>`;
+  }).join('');
+
+  // ========== Section 2: 大カテゴリ ==========
+  const majorMap = {};
+  rows.forEach(r => {
+    const urgency = r[C.URGENCY] || '低';
+    const resolved = r[C.RESOLVE_STATUS] === '解決';
+    (r[C.MAJOR_NAME]||'').split(';').forEach(s => {
+      const k = s.trim();
+      if (!k || k==='不明') return;
+      if (!majorMap[k]) majorMap[k] = {count:0, high:0, mid:0, low:0, minors:{}, resolved:0};
+      majorMap[k].count++;
+      if (urgency.includes('高')) majorMap[k].high++;
+      else if (urgency.includes('中')) majorMap[k].mid++;
+      else majorMap[k].low++;
+      const minor = (r[C.MINOR_NAME]||'').split(';')[0].trim();
+      if (minor && minor!=='不明') majorMap[k].minors[minor] = (majorMap[k].minors[minor]||0)+1;
+      if (resolved) majorMap[k].resolved++;
+    });
+  });
+  const majorList = Object.entries(majorMap).sort((a,b)=>b[1].count-a[1].count);
+
+  // 円グラフ（大カテゴリ）
+  destroyChart('ch-pp-major');
+  const mCtx = document.getElementById('ch-pp-major');
+  if (mCtx && majorList.length) {
+    const _majorRows = rows;
+    charts['ch-pp-major'] = new Chart(mCtx, {
+      type: 'doughnut',
+      data: {
+        labels: majorList.map(d=>d[0]),
+        datasets: [{ data: majorList.map(d=>d[1].count), backgroundColor: CHART_COLORS, borderWidth:2 }]
+      },
+      options: {
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{ position:'right', labels:{ font:{size:10}, boxWidth:12 } } },
+        onClick: (e, elements) => {
+          if (elements.length > 0) {
+            const idx = elements[0].index;
+            const label = majorList[idx][0];
+            openVoiceModal(label, _majorRows, 'major');
+          }
+        }
+      }
+    });
+    mCtx.style.cursor = 'pointer';
+    mCtx.title = 'クリックして生の声を確認';
+  }
+
+  // 詳細テーブル（大カテゴリ）
+  document.getElementById('pp-major-tbody').innerHTML = majorList.map(([k,d]) => {
+    const topMinor = Object.entries(d.minors).sort((a,b)=>b[1]-a[1])[0]?.[0] || '―';
+    const resolveRate = d.count ? (d.resolved/d.count*100).toFixed(0)+'%' : '―';
+    return `<tr data-major="${k}" class="clickable-row" style="cursor:pointer" title="クリックして生の声を確認">
+      <td><b>${k}</b> <span style="font-size:10px;color:#888">🔍</span></td>
+      <td>${d.count}</td>
+      <td><span style="color:#B91C1C;font-weight:600">${d.high}</span></td>
+      <td><span style="color:#92400E;font-weight:600">${d.mid}</span></td>
+      <td><span style="color:#1e40af;font-weight:600">${d.low}</span></td>
+      <td>${resolveRate}</td>
+      <td style="max-width:200px;font-size:11px;color:#555">${topMinor}</td>
+    </tr>`;
+  }).join('');
+
+  // ========== Section 3: バリア ==========
+  // バリア内フィルターのドロップダウンを設定
+  const barrierMajorSel = document.getElementById('f-barrier-major');
+  const barrierTimingSel = document.getElementById('f-barrier-timing');
+  if(barrierMajorSel) {
+    const majors = [...new Set(rows.map(r=>(r[C.MAJOR_NAME]||'').split(';')[0].trim()).filter(v=>v&&v!=='不明'))].sort();
+    barrierMajorSel.innerHTML = '<option value="">すべて</option>' + majors.map(m=>`<option value="${m}">${m}</option>`).join('');
+  }
+  if(barrierTimingSel) {
+    barrierTimingSel.innerHTML = '<option value="">すべて</option>' + TIMING_CANONICAL.map(t=>`<option value="${t}">${t}</option>`).join('');
+  }
+
+  function buildBarrierSection() {
+    const selMajor = (document.getElementById('f-barrier-major')||{}).value || '';
+    const selTiming = (document.getElementById('f-barrier-timing')||{}).value || '';
+    let bRows = rows.filter(r => !isNoBarrier((r[C.BARRIER_SHORT]||'').split(';')[0].trim()));
+    if(selMajor) bRows = bRows.filter(r => (r[C.MAJOR_NAME]||'').split(';')[0].trim() === selMajor);
+    if(selTiming) bRows = bRows.filter(r => (r[C.TIMING_SEL]||'').split(';').map(s=>cleanTiming(s)).includes(selTiming));
+
+    const barrierMap = {};
+    bRows.forEach(r=>{
+      const b=normalizeBarrier((r[C.BARRIER_SHORT]||'').split(';')[0].trim());
+      const u=r[C.URGENCY]||'低';
+      const p=r[C.EST_PAGE]||'不明';
+      if(!barrierMap[b]) barrierMap[b]={count:0,high:0,mid:0,low:0,pages:{},resolved:0};
+      barrierMap[b].count++;
+      if(u.includes('高')) barrierMap[b].high++;
+      else if(u.includes('中')) barrierMap[b].mid++;
+      else barrierMap[b].low++;
+      if(r[C.RESOLVE_STATUS]==='解決') barrierMap[b].resolved++;
+      barrierMap[b].pages[p]=(barrierMap[b].pages[p]||0)+1;
+    });
+
+    // 件数順にソート（スコアではなくcount）
+    const barrierList=Object.entries(barrierMap).sort((a,b)=>b[1].count-a[1].count).slice(0,10);
+    // ch-barrier グラフは削除済み（詳細テーブルのみ表示）
+
+    const countEl = document.getElementById('barrier-filter-count');
+    if(countEl) countEl.textContent = `${bRows.length}件 / 課題あり`;
+
+    document.getElementById('barrier-tbody').innerHTML=barrierList.map(([b,d])=>{
+      // 不明をスキップして最上位の実ページを優先表示
+      const sortedPages=Object.entries(d.pages).sort((a,b)=>b[1]-a[1]);
+      const topPageEntry=sortedPages.find(([pg])=>pg&&pg!=='不明')||sortedPages[0];
+      const topPage=topPageEntry?.[0]||'不明';
+      const resolveRate=d.count?(d.resolved/d.count*100).toFixed(0):0;
+      const rColor=resolveRate>=70?'#059669':resolveRate>=40?'#D97706':'#DC2626';
+      return `<tr>
+        <td>${b}</td><td>${d.count}</td>
+        <td><span style="color:#B91C1C;font-weight:600">${d.high}</span></td>
+        <td><span style="color:#92400E;font-weight:600">${d.mid}</span></td>
+        <td><span style="color:#1e40af;font-weight:600">${d.low}</span></td>
+        <td><span style="font-weight:700;color:${rColor}">${resolveRate}%</span></td>
+        <td>${topPage}</td></tr>`;
+    }).join('');
+  }
+
+  buildBarrierSection();
+
+  // バリアフィルターのイベント
+  const barrierResetBtn = document.getElementById('btn-barrier-reset');
+  if(barrierMajorSel) barrierMajorSel.addEventListener('change', buildBarrierSection);
+  if(barrierTimingSel) barrierTimingSel.addEventListener('change', buildBarrierSection);
+  if(barrierResetBtn) barrierResetBtn.addEventListener('click', ()=>{
+    if(barrierMajorSel) barrierMajorSel.value='';
+    if(barrierTimingSel) barrierTimingSel.value='';
+    buildBarrierSection();
+  });
+
+  // ====== テーブル行クリック → 生の声モーダル ======
+  const _ppRows = rows;
+  document.querySelectorAll('#pp-timing-tbody tr[data-timing]').forEach(tr => {
+    tr.addEventListener('click', () => {
+      openVoiceModal(tr.dataset.timing, _ppRows, 'timing');
+    });
+  });
+  document.querySelectorAll('#pp-major-tbody tr[data-major]').forEach(tr => {
+    tr.addEventListener('click', () => {
+      openVoiceModal(tr.dataset.major, _ppRows, 'major');
+    });
+  });
+}
+
+// ==========================================
+// OPERATOR
+// ==========================================
+function renderOperator() {
+  // 正規OPのみフィルタ
+  const rows = filteredRows.filter(r => r[41]!=='form' && r[C.OP_NAME] && VALID_OPS.has(r[C.OP_NAME]));
+  const opMap = {};
+  rows.forEach(r=>{
+    const op=r[C.OP_NAME];
+    if(!opMap[op]) opMap[op]={count:0,scores:[],know:[],goods:[],improves:[],resolved:0};
+    opMap[op].count++;
+    const s=parseFloat(r[C.OP_SCORE]); if(!isNaN(s)&&s>0) opMap[op].scores.push(s);
+    const k=parseFloat(r[C.OP_KNOW]); if(!isNaN(k)&&k>0) opMap[op].know.push(k);
+    if(r[C.OP_GOOD]) opMap[op].goods.push(r[C.OP_GOOD]);
+    if(r[C.OP_IMPROVE]) opMap[op].improves.push(r[C.OP_IMPROVE]);
+    if(r[C.RESOLVE_STATUS]==='解決') opMap[op].resolved++;
+  });
+
+  const avg=arr=>arr.length?(arr.reduce((a,b)=>a+b,0)/arr.length).toFixed(2):'―';
+  const opList=Object.entries(opMap).sort((a,b)=>{
+    const sa=parseFloat(avg(a[1].scores))||0;
+    const sb=parseFloat(avg(b[1].scores))||0;
+    return sb-sa;
+  });
+
+  // KPI（最高評価OP不要なので2枚のみ）
+  document.getElementById('op-kpi-grid').innerHTML=`
+    <div class="kpi-card"><div class="kpi-label">オペレーター数</div><div class="kpi-value">${opList.length}</div><div class="kpi-sub">名</div></div>
+    <div class="kpi-card green"><div class="kpi-label">平均OP評価</div><div class="kpi-value">${avg(opList.flatMap(([_,d])=>d.scores))}</div><div class="kpi-sub">/ 5.0</div></div>
+  `;
+
+  // OPカード
+  document.getElementById('op-cards').innerHTML=opList.map(([op,d])=>{
+    const score=avg(d.scores);
+    const knowAvg=avg(d.know);
+    const resolveRate=d.count?(d.resolved/d.count*100).toFixed(0):0;
+    return `
+    <div class="op-card">
+      <h4>👤 ${op} <span style="font-size:11px;color:#999;font-weight:normal">${d.count}件担当</span></h4>
+      ${[
+        ['総合評価',score,5],
+        ['解決率',resolveRate+'%',null]
+      ].map(([label,val,max])=>`
+        <div class="op-score-bar">
+          <div class="op-score-label"><span>${label}</span><span>${val}${max?'/'+max:''}</span></div>
+          ${max?`<div class="bar-bg"><div class="bar-fill" style="width:${Math.min(100,(parseFloat(val)||0)/max*100)}%"></div></div>`:''}
+        </div>
+      `).join('')}
+    </div>`;
+  }).join('');
+}
+
+// ==========================================
+// EC IMPROVEMENT
+// ==========================================
+
+// ページ別改善アクション・URLマッピング（VoC × 実サイト分析に基づく）
+const PAGE_META = {
+  '商品ページ': {
+    url: 'https://www.store-express.com/shop/c/',
+    urlLabel: '商品一覧・商品詳細ページ（例：/shop/g/商品コード/）',
+    accessNote: '',
+    fixTargets: [
+      '在庫数表示エリア（数量入力ボックス付近）',
+      '商品仕様テーブル（大量注文・分納可否欄）',
+      '納期表示テキスト（在庫切れ時の「次回入荷：○月○日予定」）',
+      '在庫切れ表示の下部（後継品・類似品リンク）'
+    ],
+    actions: [
+      '【在庫数リアルタイム表示】商品名直下に「残り○点」「在庫○点（大量注文可）」を常時表示 ← VoC: 「在庫数がWebで分からず電話確認」9件・「Webで在庫数が分からず電話確認」5件',
+      '【入荷予定日の表示】在庫切れ時に「次回入荷：○月○日予定」を赤字の帯で目立つように表示 ← VoC: 「在庫数・入荷予定がWebで不明」4件',
+      '【発送目安の明記】価格・在庫情報と同じエリアに「通常○営業日で発送」を表示',
+      '【分納可否の記載】大ロット商品の仕様欄に「10個以上は分納対応可（要確認）」を追記'
+    ]
+  },
+  '注文履歴詳細': {
+    url: 'https://www.store-express.com/shop/member/orderhistorydetail.aspx',
+    urlLabel: '注文履歴詳細（/shop/member/orderhistorydetail.aspx）🔐要ログイン',
+    accessNote: '🔐 ログイン後に利用できるページ',
+    fixTargets: [
+      '注文ステータスの進捗バー（受注→出荷準備→出荷済）',
+      '配送業者・伝票番号・追跡URLの表示欄',
+      '変更・キャンセル可否と締切時間の表示',
+      'メール通知履歴・再送リンク'
+    ],
+    actions: [
+      '【出荷ステータス可視化】「受注確認」→「出荷準備中」→「出荷済」の進捗バーを画面上部に常時表示 ← VoC: 「Web上で出荷状況が分からない」3件',
+      '【配送追跡リンク設置】伝票番号発行後すぐにヤマト/佐川/日本郵便の追跡URLを直リンクで表示 ← VoC: 「送り状番号が未発行で追跡できない」2件',
+      '【変更・キャンセル可否明示】「△月△日○時まで変更可能」と締切を表示、超過後は「お電話でのみ対応可（0570-200-112）」を案内 ← VoC: 「注文後の色変更がWebで完結しない」2件',
+      '【出荷完了メール最適化】配送業者・伝票番号・追跡URLを含む出荷完了メールを自動送信'
+    ]
+  },
+  'ご注文の確認': {
+    url: 'https://www.store-express.com/shop/order/orderconfirm.aspx',
+    urlLabel: '注文確認・決済（/shop/order/orderconfirm.aspx）🔐要ログイン',
+    accessNote: '🔐 ログイン後に利用できるページ',
+    fixTargets: [
+      'NP掛け払い選択時の与信審査フロー説明テキスト',
+      '注文確定ボタンの表示条件・非活性時のエラーメッセージ',
+      '当日出荷カウントダウンと最終到着予定日の表示',
+      '決済エラー時の原因表示とサポート誘導ボタン'
+    ],
+    actions: [
+      '【NP掛け払い事前説明】選択時に「与信審査があります（結果メールにてご連絡、最大○営業日）」と審査フローを明示 ← VoC: 「NP掛け払いが通らず決済できない」3件',
+      '【確定ボタン不具合対策】ボタンが押せない原因を「○○が未入力です」とリアルタイムで色付き表示 ← VoC: 「確定ボタンが表示されない」1件',
+      '【当日出荷カウントダウン】確認画面に「当日出荷まで残り○時間○分」をリアルタイム表示し、最短到着日を併記 ← VoC: 「当日出荷表示と到着予定日の不一致」2件',
+      '【決済エラー即時案内】エラーの内容ごとに解決方法をその場で表示し、電話サポートへの案内ボタンを設置'
+    ]
+  },
+  'ヘルプページ': {
+    url: 'https://www.store-express.com/shop/e/ehelp/',
+    urlLabel: 'ヘルプページ（https://www.store-express.com/shop/e/ehelp/）',
+    accessNote: '',
+    fixTargets: [
+      'FAQトップの「よく見られる質問」セクション（帳票・カタログ停止が上位にない）',
+      'カタログ停止手順（ガイド1-7に記載あり、ただし検索・トップからの到達性が低い）',
+      'NP掛け払い/帳票FAQページ（guide_payment.aspxに記載あり、サイト内検索での到達性改善が必要）',
+      '検索ボックスのサジェストワード設定（カタログ停止・NP掛け払い・納品書再発行など）'
+    ],
+    actions: [
+      '【帳票FAQトップ配置】ヘルプトップの「よく見られる質問」に「納品書・領収書・インボイスの確認方法」を追加（現状はガイド3章の階層に埋まっている）',
+      '【カタログ停止アクセス改善】ガイド1-7「カタログについて（請求・停止）」へのショートカットリンクをヘルプトップに追加。カタログ停止はマイページ→お客様情報の管理→カタログ送付設定から変更可能な旨を明記',
+      '【NP掛け払い帳票案内強化】guide_payment.aspxに詳細記載あり。FAQに「NP掛け払いの請求書はネットプロテクションズから翌月第3営業日に発行」を追記し、インボイス非対応の旨を明示',
+      '【検索サジェスト強化】「カタログ停止」「DM停止」「NP掛け払い」「納品書再発行」「インボイス」を検索サジェストワードに登録してヒット率を向上'
+    ]
+  },
+  'ご利用ガイド（お支払いについて）': {
+    url: 'https://www.store-express.com/shop/pages/guide_payment.aspx',
+    urlLabel: 'お支払いガイド（/shop/pages/guide_payment.aspx）',
+    accessNote: '',
+    fixTargets: [
+      '振込手数料・振込先の説明欄',
+      '支払い方法別の比較表（クレカ/振込/NP/代引の手数料）',
+      'NP掛け払い審査プロセスの説明図',
+      '入金確認・反映日数の記載'
+    ],
+    actions: [
+      '【振込手数料の明記】「振込手数料はお客様負担」「主要銀行からの目安：○○円程度」を表に整理 ← VoC: 「振込手数料の目安情報が見当たらない」2件',
+      '【入金反映日数の明示】「振込から○営業日以内に確認」→「確認後にメール送信」のフローを図解',
+      '【NP掛け払いフロー図】申込→審査→結果通知→請求書到着の日数を図で表示',
+      '【支払い方法比較表】クレカ・銀行振込・NP掛け払い・代金引換の手数料・注意事項を一覧比較'
+    ]
+  },
+  '注文履歴一覧': {
+    url: 'https://www.store-express.com/shop/member/orderhistory.aspx',
+    urlLabel: '注文履歴一覧（/shop/member/orderhistory.aspx）🔐要ログイン',
+    accessNote: '🔐 ログイン後に利用できるページ',
+    fixTargets: [
+      '注文番号・商品名での検索ボックス（現状ない可能性）',
+      '注文ステータスのフィルター・カラーバッジ',
+      'キャンセル・変更可能な注文の識別表示',
+      'ページネーションと表示件数設定'
+    ],
+    actions: [
+      '【検索機能追加】注文番号・商品名・日付範囲での絞り込み検索を追加 ← VoC: 「注文番号不明で履歴特定できない」4件',
+      '【ステータス色分け】「出荷待ち（黄）」「出荷済（青）」「キャンセル（赤）」「完了（緑）」をバッジで一目瞭然に',
+      '【変更可能バッジ】変更・キャンセル可能期限内の注文に「変更可能（○日まで）」バッジを表示',
+      '【複数アカウント案内】過去に別アカウントで注文した場合の履歴確認方法を一覧ページ上部に案内'
+    ]
+  },
+  'ログイン/マイページ': {
+    url: 'https://www.store-express.com/shop/member/mypage.aspx',
+    urlLabel: 'マイページ（/shop/member/mypage.aspx）🔐要ログイン',
+    accessNote: '🔐 ログイン後に利用できるページ',
+    fixTargets: [
+      'ログイン直後トップ画面の最新注文サマリー表示',
+      '領収書・納品書ダウンロードへの導線（現状の位置）',
+      'よく使う機能のショートカットアイコン配置',
+      'ログイン用セキュアキー（専用パスワード）再設定リンクの位置'
+    ],
+    actions: [
+      '【最新注文サマリー表示】ログイン後すぐに「直近○件の注文ステータス」をカード形式で表示 ← VoC: キャンセル完了確認・領収書発行が最多意図',
+      '【領収書ダウンロード導線強化】マイページTOPに「📄 領収書・納品書ダウンロード」を目立つボタンで配置',
+      '【ショートカット強化】「注文する」「注文履歴」「領収書」「配送先管理」を大アイコンボタンで最上部に表示',
+      '【セキュアキー再設定案内】ログインエラー時に「ログイン用パスワード（セキュアキー）の再設定はこちら」リンクを表示'
+    ]
+  },
+  'ご注文方法の設定': {
+    url: 'https://www.store-express.com/shop/member/ordermethod.aspx',
+    urlLabel: '注文方法設定（/shop/member/ordermethod.aspx）🔐要ログイン',
+    accessNote: '🔐 ログイン後に利用できるページ',
+    fixTargets: [
+      '配送先ごとの当日出荷可否・締切時間の表示エリア',
+      '指定日カレンダーと当日発送可否の連動ロジック',
+      'OA番号（掛売番号）入力欄の説明テキスト',
+      '配送先選択プルダウンのUX'
+    ],
+    actions: [
+      '【当日出荷可否の動的表示】配送先・商品選択後に「この配送先への当日出荷：○時まで（残り○時間）」をリアルタイム表示 ← VoC: 「当日発送表示と最短指定日が不一致」1件',
+      '【指定日カレンダー改善】選択不可日付に「在庫切れ」「配送不可地域」の理由を小さなポップアップで表示',
+      '【OA番号説明追加】入力欄横に「OA番号（掛売番号）とは？」ヘルプアイコンを設置してその場で説明を表示',
+      '【配送先お気に入り機能】よく使う配送先を「お気に入り登録」してワンクリックで選択できる機能の追加'
+    ]
+  },
+  'カタログ請求': {
+    url: 'https://www.store-express.com/shop/e/ereqcat/',
+    urlLabel: 'カタログ請求（/shop/e/ereqcat/）',
+    accessNote: '',
+    fixTargets: [
+      'DM停止フォームへのリンク（ページ内にあるか）',
+      'デジタルカタログへの誘導リンク（ページ上部にあるか）',
+      'カタログ種類・収録商品カテゴリの説明',
+      '次回改訂予定日の表示'
+    ],
+    actions: [
+      '【DM停止リンク追加】「カタログの受け取りを停止したい方はこちら」リンクをページ上部に配置 ← VoC: DM停止依頼が問い合わせ上位（115件）',
+      '【デジタルカタログ誘導強化】「紙カタログ請求」より前に「デジタル版（即時閲覧可）はこちら」を案内',
+      '【カタログ内容説明】請求前に対象カテゴリ・ページ数・最新改訂日を表示',
+      '【次回改訂予定日】「次回改訂版：○○年○月発行予定」を記載し即時性を伝達'
+    ]
+  },
+  'お問い合わせフォーム': {
+    url: 'https://www.store-express.com/shop/e/ehelp/',
+    urlLabel: 'お問い合わせ（ヘルプページ下部）/shop/e/ehelp/',
+    accessNote: '',
+    fixTargets: [
+      '問い合わせカテゴリ選択の細分化',
+      '送信完了ページの回答目安時間表示',
+      '帳票再発行・DM停止などの専用フォームへの誘導',
+      '緊急度・希望対応方法の選択肢'
+    ],
+    actions: [
+      '【カテゴリ細分化】「配送」「支払い」「帳票再発行」「キャンセル・返品」など詳細分類し、選択に応じて関連FAQを自動表示',
+      '【回答目安時間の明記】送信完了画面に「通常○営業日以内にご返信します（お急ぎはお電話を）」と表示',
+      '【専用フォーム誘導】「帳票再発行」「DM停止」選択時に専用の簡易フォームへ誘導して入力を簡略化',
+      '【緊急度選択追加】「急ぎの注文に関する相談」選択時は電話番号を優先案内'
+    ]
+  },
+  'サイト内検索': {
+    url: 'https://www.store-express.com/shop/goods/search.aspx?search=x',
+    urlLabel: '商品検索ページ（/shop/goods/search.aspx）',
+    accessNote: '',
+    fixTargets: [
+      '検索バーの候補表示（サジェスト）・自動補完機能',
+      '旧品番・別名での同義語辞書設定',
+      '0件ヒット時の代替提案表示',
+      '詳細絞り込みフィルター（高さ・幅・素材）'
+    ],
+    actions: [
+      '【旧品番・別名対応】廃番・型番変更品の旧品番で新品番商品がヒットするよう同義語辞書を整備 ← VoC: 「その商品がないということで電話した」',
+      '【詳細フィルター強化】高さ・幅・材質・耐荷重などの絞り込みフィルターを追加 ← VoC: 「高さ条件で検索・絞込ができない」2件',
+      '【0件時代替提案】0件ヒット時に「こちらの商品はいかがですか？」としてカテゴリ別推薦を表示',
+      '【検索サジェスト強化】入力中に頻出キーワード・カテゴリ名・型番のサジェストをリアルタイム表示'
+    ]
+  },
+  'ログインできない場合': {
+    url: 'https://www.store-express.com/shop/member/login.aspx',
+    urlLabel: 'ログインページ（/shop/member/login.aspx）',
+    accessNote: '',
+    fixTargets: [
+      'パスワード・ログインキー（セキュアキー）の再設定手順の分かりやすさ',
+      '複数メールアドレスで登録した場合の案内',
+      '法人アカウント固有のログイン手順',
+      'エラー内容ごとの解決手順'
+    ],
+    actions: [
+      '【エラー原因別フロー整備】「パスワード忘れ」「ログインキー（セキュアキー）が不明」「メールアドレス不明」の3パターンに分けて案内',
+      '【再設定手順の図解】パスワード・ログインキー（セキュアキー）の再設定手順を画面キャプチャ付きで掲載',
+      '【法人アカウント案内】OA番号・ログインキー（セキュアキー）が必要な法人向けログインの説明ページへ誘導',
+      '【複数メールアドレス確認ガイド】「以前と違うメールで登録した可能性がある方はこちら」ガイドを追加'
+    ]
+  },
+  '新規会員登録': {
+    url: 'https://www.store-express.com/shop/e/enew/',
+    urlLabel: '新規会員登録（/shop/e/enew/）',
+    accessNote: '',
+    fixTargets: [
+      '入力エラー表示のリアルタイム性',
+      '法人・個人登録の違いと特典の説明',
+      '既存取引先（OA番号あり）とWebアカウントの紐付け案内',
+      '文字数制限・入力形式の説明テキスト'
+    ],
+    actions: [
+      '【入力内容のリアルタイムチェック】入力欄から離れた瞬間にエラーをその場で赤枠表示',
+      '【既存取引先紐付け案内】「すでにお取引のある方（OA番号をお持ちの方）はこちら」を登録フォーム上部に追加',
+      '【法人特典説明】掛払い・専用カタログ・見積もり対応など法人メリットを登録前に表示',
+      '【入力補助】建物名の文字数制限・住所自動補完機能を追加'
+    ]
+  },
+  'カート': {
+    url: 'https://www.store-express.com/shop/cart/',
+    urlLabel: 'カートページ（/shop/cart/）🔐要ログイン',
+    accessNote: '🔐 ログイン後に利用できるページ',
+    fixTargets: [
+      '個人宅配送追加料金の表示タイミング',
+      '送料無料条件バー（あと○円で送料無料）',
+      'カート内の在庫切れ商品の警告表示',
+      '支払い方法選択と事前注意事項'
+    ],
+    actions: [
+      '【個人宅配送料の早期表示】商品追加時点で「個人宅配送：追加料金○○円」をカート画面に表示',
+      '【送料無料バー表示】「あと○○円で送料無料」の達成状況バーをカート画面上部に常時表示',
+      '【在庫切れ警告】カート内商品が在庫切れになった場合、その場で警告と代替品リンクを表示',
+      '【支払い方法案内改善】各方法の手数料・注意事項をクリック（タップ）で確認できるよう改善'
+    ]
+  },
+  'デジタルカタログ': {
+    url: 'https://www.store-express.com/shop/e/e205/',
+    urlLabel: 'デジタルカタログ（/shop/e/e205/）',
+    accessNote: '',
+    fixTargets: [
+      'カタログ内での商品名・ページ番号検索機能',
+      '廃番・リニューアル商品のお知らせ表示',
+      'スマートフォン最適化',
+      '商品詳細ページへの直接リンク'
+    ],
+    actions: [
+      '【カタログ内検索機能】商品名・型番・ページ番号で瞬時に該当ページへジャンプできる検索機能を追加',
+      '【廃番・後継品案内】廃番ページに「後継品はこちら→」のお知らせを表示して商品ページへ誘導',
+      '【スマホ最適化】指での拡大縮小（ピンチ操作）・ページめくりをスマートフォン向けに改善',
+      '【商品ページ直リンク】カタログ内の商品タップで商品詳細ページに直接遷移できるリンクを設置'
+    ]
+  },
+  '会員情報変更': {
+    url: 'https://www.store-express.com/shop/member/edit.aspx',
+    urlLabel: '会員情報変更（/shop/member/edit.aspx）🔐要ログイン',
+    accessNote: '🔐 ログイン後に利用できるページ',
+    fixTargets: [
+      'Web変更可能項目と電話手続き必要項目の区別表示',
+      '名義変更・住所変更のフロー説明',
+      '変更反映タイミングの説明テキスト',
+      '変更完了通知メールの自動送信設定'
+    ],
+    actions: [
+      '【変更可否の明示】各入力欄に「Web変更可」「電話にて変更（0570-200-112）」のラベルを表示',
+      '【名義変更フロー追加】「会社名・屋号の変更は必要書類をご用意の上、お電話ください」のガイドを表示',
+      '【変更反映タイミング明示】「変更後、次回ログイン時から反映されます」など反映タイミングを明示',
+      '【変更完了メール自動送信】変更内容の確認メールを自動送信'
+    ]
+  },
+  'ご利用ガイド（お届けについて）': {
+    url: 'https://www.store-express.com/shop/pages/guide_delivery.aspx',
+    urlLabel: 'お届け・配送ガイド（/shop/pages/guide_delivery.aspx）',
+    accessNote: '',
+    fixTargets: [
+      '当日出荷締切時間（地域別・商品別）の現在時刻連動表示',
+      '時間指定不可の条件説明テキスト',
+      '送料計算ツールの設置',
+      '地域別・配送業者別の到着目安日数表'
+    ],
+    actions: [
+      '【当日出荷締切時間のリアルタイム表示】「東京都への当日出荷：本日○時まで（残り○時間）」を現在時刻と連動表示 ← VoC: 「時間指定不可の条件が事前に分からない」2件',
+      '【時間指定不可条件の早期案内】商品追加・配送先選択時に「この商品は時間指定不可」を早めに案内',
+      '【送料計算ツール設置】都道府県・重量を入力すると送料が即時計算できるツールをページ内に設置',
+      '【地域別到着目安表】都道府県選択で「○～○営業日でお届け予定」を表示する目安表を設置'
+    ]
+  },
+  '配送先の登録': {
+    url: 'https://www.store-express.com/shop/member/addresslist.aspx',
+    urlLabel: '配送先登録（/shop/member/addresslist.aspx）🔐要ログイン',
+    accessNote: '🔐 ログイン後に利用できるページ',
+    fixTargets: [
+      '配送先追加の操作手順（画像案内があるか）',
+      '営業所留め・時間指定の入力方法の説明',
+      '登録済み配送先の編集・削除UX',
+      'エラー表示のリアルタイム性'
+    ],
+    actions: [
+      '【操作手順の画像案内】配送先追加・選択の手順をスクリーンショット付きチュートリアルで案内',
+      '【営業所留め入力補助】「営業所留め」選択時に所在地・営業時間を自動で入力できる補助機能を追加',
+      '【ワンクリック編集】登録済み配送先の編集・複製・削除をワンクリックで操作できるUIに改善',
+      '【エラーリアルタイム表示】住所・建物名の入力エラーを入力欄から離れた際に即座に表示'
+    ]
+  },
+
+  'カテゴリページ': {
+    url: 'https://www.store-express.com/shop/c/',
+    urlLabel: 'カテゴリページ（/shop/c/）',
+    accessNote: '',
+    fixTargets: [
+      'カタログ送付依頼フォームのWeb完結化（総合・季節カタログ別）',
+      'カタログ送付停止（DM停止）のセルフ手続きフォーム',
+      'カタログ掲載商品の品番入力で商品ページに直遷移する機能',
+      '申込確認メールの自動送信とステータス確認'
+    ],
+    actions: [
+      '【カタログ送付依頼のWeb完結化】総合カタログ・クリスマスカタログ等の種別選択→住所入力→確認のフォームを整備 ← VoC: 「総合カタログ送付依頼」5件・「クリスマスカタログ」7件',
+      '【DM/カタログ停止フォームの設置】マイページ内にDM停止・カタログ停止のチェックボックスを設置し電話不要で手続き完結 ← VoC: カタログ停止の電話問い合わせ多数',
+      '【カタログ品番検索の強化】カタログ掲載の「ご注文番号」からクイックオーダーへ誘導するバナーを設置',
+      '【申込確認メール整備】カタログ請求後に確認メール（品名・送付先・発送目安）を自動送信'
+    ]
+  },
+  'トップページ': {
+    url: 'https://www.store-express.com/shop/default.aspx',
+    urlLabel: 'トップページ（/shop/default.aspx）',
+    accessNote: '',
+    fixTargets: [
+      'キャンペーン条件（送料無料・割引）の表示エリア',
+      'デジタルカタログへの導線（左メニュー or バナー）',
+      'カスタムオーダー・見積もり依頼へのショートカット',
+      'よく使う機能（注文履歴・帳票・配送追跡）へのクイックリンク'
+    ],
+    actions: [
+      '【キャンペーン条件の明確化】「送料無料」と「割引」の適用条件の違いをバナー内に併記 ← VoC: 「送料無料と割引の違いが分からない」2件',
+      '【デジタルカタログ誘導強化】トップページ上部バナーまたは固定ナビに「デジタルカタログ」リンクを配置',
+      '【カスタムオーダーへの導線改善】iPad・スマートフォンでも視認しやすい位置にカスタムオーダー案内を設置',
+      '【クイックリンク設置】注文履歴・帳票ダウンロード・配送追跡への直リンクをログイン後トップに表示'
+    ]
+  },
+  'ご利用ガイド（ご注文について）': {
+    url: 'https://www.store-express.com/shop/pages/guide_order.aspx',
+    urlLabel: 'ご注文ガイド（/shop/pages/guide_order.aspx）',
+    accessNote: '',
+    fixTargets: [
+      '在庫切れ時の当日・翌日出荷可否の説明',
+      '大量注文・分納手順の記載（現状不明瞭）',
+      '支払い方法別の出荷条件一覧（クレカ/振込/NP）',
+      'FAX注文と Web注文の違いの説明'
+    ],
+    actions: [
+      '【在庫・出荷条件の図解追加】「在庫あり→当日出荷（○時まで）」「在庫切れ→入荷後出荷」のフロー図を掲載 ← VoC: 「出荷可否と条件を確認したい」複数件',
+      '【大量注文・分納手順を明記】10個以上・100か所分納などの手順をステップ形式で追記 ← VoC: 「分納可否や手順がWebで分からない」2件',
+      '【支払い方法別出荷条件一覧】クレカ（即時確認）・銀行振込（入金確認後）・NP掛け払い（審査後）の出荷条件を表で整理',
+      '【FAX/Web/電話注文の違いの比較表】注文方法ごとの手順・支払い可否・時間制限を分かりやすく比較'
+    ]
+  },
+  'イベントページ': {
+    url: 'https://www.store-express.com/shop/e/',
+    urlLabel: 'イベント・キャンペーンページ（/shop/e/）',
+    accessNote: '',
+    fixTargets: [
+      'ストエキの日（送料無料・割引イベント）の開催日程一覧',
+      '店舗とオンラインでの適用条件の違いの明示',
+      'キャンペーン終了日と対象商品のフィルター',
+      '注文方法（Web/電話/FAX）別のキャンペーン適用可否'
+    ],
+    actions: [
+      '【ストエキの日スケジュールの掲載】年間・月間の開催予定一覧（店舗・オンライン別）をページ上部に表示 ← VoC: 「開催日が分からず電話確認」3件',
+      '【店舗 vs オンライン条件の明記】「ストエキの日：店舗は毎月○日、オンラインは別日程」と明確に区別して表記',
+      '【適用条件フィルター設置】対象注文方法（Web/FAX/電話）・金額条件・送料無料 vs 割引の違いを選択できるフィルターを追加',
+      '【カウントダウン表示】イベント開催中は残り時間カウントダウンをバナーに表示'
+    ]
+  },
+  'ご利用ガイド（キャンセル・返品・交換について）': {
+    url: 'https://www.store-express.com/shop/pages/guide.aspx',
+    urlLabel: 'ご利用ガイド キャンセル・返品（/shop/pages/guide.aspx）',
+    accessNote: '',
+    fixTargets: [
+      'キャンセル可否の判断フロー（受注→出荷準備→出荷後）',
+      '分納・数量変更の可否と手続き方法',
+      '返品手続きの具体的手順（画像付き）',
+      '交換不可の理由と代替手段（返品＋再購入フロー）の案内'
+    ],
+    actions: [
+      '【キャンセル可否フロー図】「注文直後（変更可）→出荷準備中（要電話）→出荷後（キャンセル不可）」のフローを図解 ← VoC: 「キャンセル可否ルールが分かりにくい」2件',
+      '【分納・数量変更手順の明記】入荷待ち商品の数量変更・分納依頼の手順（電話連絡が必要）をステップ形式で記載',
+      '【返品手続き手順の図解】返品対象条件・手順・送料負担の取り決めを画像付きで案内',
+      '【交換不可の代替案内】「交換は承っておりません。返品後の再購入でご対応ください」とその手順をトップに明記'
+    ]
+  },
+  'ご利用ガイド（組立について）': {
+    url: 'https://www.store-express.com/shop/pages/guide.aspx',
+    urlLabel: 'ご利用ガイド 組立（/shop/pages/guide.aspx）',
+    accessNote: '',
+    fixTargets: [
+      '組立手順の図解・動画リンク（現状テキストのみの可能性）',
+      '組立設置サービスの対応範囲・費用・申込方法',
+      '部品取付説明の分かりやすさ（穴が入らない等の対処法）',
+      '組立時のよくある問題と解決法のFAQ'
+    ],
+    actions: [
+      '【組立手順の動画案内追加】主要商品の組立手順を動画またはGIFアニメで商品ページ・ガイドページに掲載 ← VoC: 「組立説明だけでは解決できない」2件',
+      '【組立設置サービスの案内強化】対応商品・費用・申込フォームへのリンクをガイドトップに配置',
+      '【組立FAQ追加】「穴が入らない」「部品が余った」「水平に立たない」など頻出トラブルのQ&Aを掲載',
+      '【部品番号と取付図の整備】部品ごとの番号・取付箇所を図示し、電話確認なしで自己解決できるよう整備'
+    ]
+  },
+  'クーポンの確認': {
+    url: 'https://www.store-express.com/shop/member/mypage.aspx',
+    urlLabel: 'クーポン確認（マイページ /shop/member/mypage.aspx）🔐要ログイン',
+    accessNote: '🔐 ログイン後に利用できるページ',
+    fixTargets: [
+      'クーポン適用条件（利用開始日・有効期限・対象注文・併用可否）の表示',
+      'キャンセル後のクーポン再付与の仕様の説明',
+      'キャンペーンコードとクーポンの違いの説明',
+      'クーポン未適用時のエラーメッセージの分かりやすさ'
+    ],
+    actions: [
+      '【クーポン適用条件の詳細表示】マイページのクーポン一覧に「利用開始日・有効期限・対象条件・送料別・併用可否」を全て表示 ← VoC: 「適用条件が分かりにくい」3件',
+      '【キャンセル後のクーポン仕様明示】「キャンセルしてもクーポンは再利用可」または「初回限定クーポンは消滅」などの仕様をクーポン説明文に明記',
+      '【コードとクーポンの区別案内】注文画面の「キャンペーンコード」入力欄とマイページの「クーポン」の違いをヘルプアイコンで説明',
+      '【未適用エラーのわかりやすい案内】クーポンが適用されていない場合にオレンジ色の注意バナーを表示し、適用手順を案内'
+    ]
+  },
+  'パスワード再設定': {
+    url: 'https://www.store-express.com/shop/member/login.aspx',
+    urlLabel: 'ログイン / パスワード再設定（/shop/member/login.aspx → 「パスワードをお忘れですか」）',
+    accessNote: '',
+    fixTargets: [
+      'ログインページ「パスワードをお忘れですか？」リンクの視認性向上',
+      '旧メールアドレスが使えなくなった場合の問い合わせ導線',
+      'セキュアキー入力エラー時のメッセージ表示',
+      '法人担当者交代時のアカウント引継ぎ案内'
+    ],
+    actions: [
+      '【パスワード忘れリンクの強調】ログインフォーム直下に「パスワードをお忘れですか？」を大きく表示し迷わず誘導 ← VoC: 「ログイン不可で再設定したい」4件',
+      '【旧メール使用不可時の代替フロー整備】「現在のメールアドレスが使えない場合はこちら（電話で本人確認後に変更）」の案内をログインページに追記 ← VoC: 「旧メール未閲覧で再設定不可」2件',
+      '【セキュアキーエラーの対処案内】セキュアキー誤入力時にロックされた場合の解除手順をログインページに表示',
+      '【法人アカウント引継ぎガイドの整備】担当者交代・退職時のアカウント名義変更手順をご利用ガイドに追加'
+    ]
+  },
+  'クイックオーダー': {
+    url: 'https://www.store-express.com/shop/pages/quickorder.aspx',
+    urlLabel: 'クイックオーダー（/shop/pages/quickorder.aspx）',
+    accessNote: '',
+    fixTargets: [
+      '注文番号入力欄と検索精度（旧品番・廃番対応）',
+      '商品が見つからない場合の代替案内（類似品・後継品）',
+      '各バー・パーツ単品の品番一覧へのリンク',
+      'ブラケット互換性情報の掲示'
+    ],
+    actions: [
+      '【旧品番・廃番品の後継品誘導】入力した注文番号が廃番の場合「後継品：○○○（品番）」を自動提案 ← VoC: 「旧注文番号で検索できず商品が見つからない」2件',
+      '【商品が見つからない場合の案内強化】0件表示時に「カスタマーサポートに品番をお伝えください（0570-200-112）」のバナーを表示',
+      '【パーツ単品品番一覧ページへの誘導】バー・ブラケット等の単品品番一覧ページへのリンクをクイックオーダーページに設置 ← VoC: 「各バー90幅の注文番号確認」など',
+      '【互換性情報の掲示】シリーズ別の互換ブラケット・パーツ対応表を商品ページおよびクイックオーダーページに表示'
+    ]
+  },
+  'ご利用ガイド（ストエキについて）': {
+    url: 'https://www.store-express.com/shop/pages/guide.aspx',
+    urlLabel: 'ご利用ガイド（/shop/pages/guide.aspx）',
+    accessNote: '',
+    fixTargets: [
+      '当日出荷の締切時間（地域・商品別）の明示',
+      '店舗とオンラインの窓口の違い・休業日情報',
+      '旧品番→現行品番の案内導線',
+      'ゲスト購入不可の事前告知'
+    ],
+    actions: [
+      '【当日出荷締切の明示】商品ページおよびガイドに「当日出荷はXX時まで（地域によって異なります）」を目立つ形で表示 ← VoC: 「当日出荷の締切条件を確認」2件',
+      '【店舗とオンライン窓口の違いを明記】「ビジネスネット（オンライン）とリアル店舗は別窓口」であることをトップページとガイドに明記',
+      '【廃番品の現行品番案内】旧カタログ品番からの後継品検索ページへの誘導リンクを設置 ← VoC: 「廃番品の現行品番確認」2件',
+      '【会員登録必須の事前告知強化】未ログイン状態でカートに商品を入れた際「注文には会員登録が必要です」を早めに表示'
+    ]
+  },
+  'メールアドレス変更': {
+    url: 'https://www.store-express.com/shop/member/edit.aspx',
+    urlLabel: '会員情報変更（/shop/member/edit.aspx）🔐要ログイン',
+    accessNote: '🔐 ログイン後に利用できるページ',
+    fixTargets: [
+      '登録メールアドレス変更の手順案内（旧メールが使えない場合）',
+      'ログインできない状態でのメール変更フロー',
+      '変更後の確認メール送信と反映タイミングの表示',
+      '過去の注文メールの再送先変更可否の案内'
+    ],
+    actions: [
+      '【旧メール使用不可時の代替フロー】「現在のメールアドレスが使えない場合はこちら（電話で本人確認後に変更）」の案内を会員情報変更ページに追加 ← VoC: 「旧アドレスを変更したい」3件',
+      '【メール変更の手順ガイド強化】変更フォーム画面に「①現メール入力→②新メールアドレス入力→③確認メールのURLクリック」の手順を図解で表示',
+      '【変更後の反映タイミング明示】「変更は即時反映されます（確認メールをご確認ください）」を変更画面に明記',
+      '【注文関連メールの再送案内】「過去の注文確認・領収書メールは新アドレスには再送できません。マイページからダウンロードください」と案内'
+    ]
+  }
+};
+
+let ecAllCards = [];
+
+function renderEC() {
+  const rows = filteredRows;
+  const total = rows.length;
+  const highUrgency = rows.filter(r=>(r[C.URGENCY]||'').includes('高')).length;
+  const barrierRows = rows.filter(r=>!isNoBarrier((r[C.BARRIER_SHORT]||'').split(';')[0].trim()));
+
+  // ページ集計
+  const pageMap = {};
+  rows.forEach(r=>{
+    const page=(r[C.EST_PAGE]||'不明').split(';')[0].trim();
+    const barrier=normalizeBarrier((r[C.BARRIER_SHORT]||'').split(';')[0].trim());
+    const urgency=r[C.URGENCY]||'低';
+    const major=(r[C.MAJOR_NAME]||'').split(';')[0].trim();
+    const voice=(r[C.CUSTOMER_VOICE]||'').substring(0,120);
+    if(!page||page==='不明') return;
+    if(!pageMap[page]) pageMap[page]={count:0,high:0,mid:0,low:0,barriers:{},majors:{},voices:[]};
+    pageMap[page].count++;
+    if(urgency.includes('高')) pageMap[page].high++;
+    else if(urgency.includes('中')) pageMap[page].mid++;
+    else pageMap[page].low++;
+    if(!isNoBarrier(barrier)){
+      pageMap[page].barriers[barrier]=(pageMap[page].barriers[barrier]||0)+1;
+    }
+    if(major&&major!=='不明') pageMap[page].majors[major]=(pageMap[page].majors[major]||0)+1;
+    if(voice && pageMap[page].voices.length<2) pageMap[page].voices.push(voice);
+  });
+
+  const pageList=Object.entries(pageMap).sort((a,b)=>b[1].count-a[1].count);
+  const highPriPages = pageList.filter(([,d])=>(d.high>10||d.count>100)&&d.count>=10).length;
+
+  // サマリー
+  document.getElementById('ec-summary-box').innerHTML=`
+    <h2>📊 改善レポート — データドリブン施策提案</h2>
+    <div class="ec-kpi-row">
+      <div class="ec-kpi"><div class="val">${total.toLocaleString()}</div><div class="lbl">総問い合わせ件数</div></div>
+      <div class="ec-kpi"><div class="val">${barrierRows.length.toLocaleString()}</div><div class="lbl">Web課題検出件数</div></div>
+      <div class="ec-kpi"><div class="val">${highUrgency.toLocaleString()}</div><div class="lbl">高緊急度件数</div></div>
+      <div class="ec-kpi"><div class="val">${pageList.length}</div><div class="lbl">改善対象ページ数</div></div>
+      <div class="ec-kpi"><div class="val">${highPriPages}</div><div class="lbl">高優先ページ数</div></div>
+    </div>
+    <p style="margin-top:12px;font-size:13px;opacity:.9;">
+      📌 問い合わせ上位: ${pageList.slice(0,3).map(([p,d])=>`<b>${p}</b>（${d.count}件）`).join(' ／ ')}
+    </p>
+    ${(()=>{
+      // Web転換可能: normSelfResolve で「高」に分類された件数
+      const webConv = rows.filter(r=>normSelfResolve(r[C.SELF_RESOLVE]||'')==='高').length;
+      const callRows2 = rows.filter(r=>r[41]!=='form');
+      const convRate = callRows2.length ? (webConv/callRows2.length*100).toFixed(1) : 0;
+      const convPct  = total ? (webConv/total*100).toFixed(1) : 0;
+      const minSave  = Math.round(webConv * 7);   // 1件あたり最低7分
+      const maxSave  = Math.round(webConv * 12);  // 1件あたり最大12分
+      return `<div style="margin-top:14px;background:rgba(255,255,255,.12);border-radius:10px;padding:14px 18px;border:1px solid rgba(255,255,255,.25);">
+        <div style="font-size:11px;font-weight:700;letter-spacing:.06em;opacity:.75;margin-bottom:10px;text-transform:uppercase;">💡 Web転換効果試算</div>
+        <div style="display:flex;gap:28px;flex-wrap:wrap;align-items:flex-end;">
+          <div style="text-align:center;">
+            <div style="font-size:26px;font-weight:800;letter-spacing:-1px;color:#FCD34D;">${webConv.toLocaleString()}</div>
+            <div style="font-size:10px;opacity:.8;margin-top:3px;">Web転換可能件数</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-size:26px;font-weight:800;letter-spacing:-1px;color:#93C5FD;">${convRate}<span style="font-size:14px">%</span></div>
+            <div style="font-size:10px;opacity:.8;margin-top:3px;">電話件数に占める割合</div>
+          </div>
+          <div style="flex:1;min-width:180px;background:rgba(0,0,0,.15);border-radius:8px;padding:10px 14px;">
+            <div style="font-size:11px;font-weight:600;opacity:.9;margin-bottom:4px;">📞 削減可能な電話対応時間（推定）</div>
+            <div style="font-size:14px;font-weight:700;color:#FCD34D;">${minSave.toLocaleString()}〜${maxSave.toLocaleString()} 分 / 集計期間</div>
+            <div style="font-size:10px;opacity:.7;margin-top:3px;">※ Web自己解決可能性「高」（明確に自己解決可能）の件数 × 1件あたり7〜12分で試算</div>
+          </div>
+        </div>
+      </div>`;
+    })()}`;
+
+  // カードデータ生成
+  ecAllCards = pageList.filter(([,d])=>d.count>=10).map(([page,d])=>{
+    const pri = d.high>30||d.count>500?'高': d.high>5||d.count>100?'中':'低';
+    const topBarriers = Object.entries(d.barriers).sort((a,b)=>b[1]-a[1]).slice(0,4);
+    const topMajors = Object.entries(d.majors).sort((a,b)=>b[1]-a[1]).slice(0,2);
+    const topB3 = Object.entries(d.barriers).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    const topI3 = Object.entries(d.intents||{}).sort((a,b)=>b[1]-a[1]).slice(0,3);
+    const meta = PAGE_META[page] || {
+      url:'https://www.store-express.com/shop/e/ehelp/',
+      urlLabel:'ヘルプページ（/shop/e/ehelp/）',
+      accessNote:'',
+      fixTargets: topB3.length ? topB3.map(([b])=>`「${b}」に関する情報・FAQ整備`) : [`${page}のよくある問い合わせ内容をFAQに追加`],
+      actions: [
+        topI3.length ? `【最多問い合わせへの対応】${topI3.slice(0,2).map(([i,c])=>i+'('+c+'件)').join('・')} をFAQ/ガイドに追加（VoC件数根拠）` : `【FAQ追加】${page}でよく発生する問い合わせ上位をFAQに追加`,
+        topB3.length ? `【バリア解消】主な障壁「${topB3[0][0]}」（${topB3[0][1]}件）をページ内で解消できる情報を追加` : '【ヘルプ誘導】ページ内に「よくあるご質問はこちら」リンクを設置',
+        '【サポート案内】自己解決できない場合の電話（0570-200-112）・フォーム案内を目立つ位置に配置'
+      ]
+    };
+    return {page, d, pri, topBarriers, topMajors, meta};
+  });
+
+  renderECCards();
+
+  // フィルターイベント
+  ['f-ec-priority','f-ec-search'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener(id==='f-ec-search'?'input':'change', renderECCards);
+  });
+  const resetBtn=document.getElementById('btn-ec-reset');
+  if(resetBtn) resetBtn.addEventListener('click',()=>{
+    const p=document.getElementById('f-ec-priority');const s=document.getElementById('f-ec-search');
+    if(p)p.value='';if(s)s.value='';
+    renderECCards();
+  });
+
+  // ── ⑥ 商品名別問い合わせランキング ──
+  {
+    const prodNameMap = {};
+    rows.forEach(r=>{
+      const name = (r[C.PROD_NAME]||'').trim();
+      if(!name||name==='不明'||name==='') return;
+      if(!prodNameMap[name]) prodNameMap[name]={count:0,high:0,mid:0,barriers:{},majors:{}};
+      prodNameMap[name].count++;
+      const u=r[C.URGENCY]||'低';
+      const b=normalizeBarrier((r[C.BARRIER_SHORT]||'').split(';')[0].trim());
+      const m=(r[C.MAJOR_NAME]||'').split(';')[0].trim();
+      if(u.includes('高')) prodNameMap[name].high++;
+      if(!isNoBarrier(b) && b) prodNameMap[name].barriers[b]=(prodNameMap[name].barriers[b]||0)+1;
+      if(m && m!=='不明') prodNameMap[name].majors[m]=(prodNameMap[name].majors[m]||0)+1;
+    });
+    const prodNameList=Object.entries(prodNameMap).sort((a,b)=>b[1].count-a[1].count).slice(0,10);
+    const prodNameHtml = prodNameList.length ? `
+      <div style="background:#fff;border-radius:14px;box-shadow:var(--shadow-sm);overflow:hidden;margin-bottom:20px;">
+        <div style="background:var(--slate-800);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:8px;">
+          <span style="font-size:14px;font-weight:700;">🏷️ 商品名別 問い合わせランキング TOP10</span>
+          <span style="font-size:11px;opacity:.7;margin-left:auto;">件数順 — 商品ページ改善・説明文追記の優先度として活用</span>
+        </div>
+        <div style="padding:0 4px 4px;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead><tr style="background:var(--slate-100);">
+              <th style="padding:8px 12px;text-align:left;font-weight:600;color:var(--slate-600);width:36px;">#</th>
+              <th style="padding:8px 12px;text-align:left;font-weight:600;color:var(--slate-600);">商品名</th>
+              <th style="padding:8px 12px;text-align:center;font-weight:600;color:var(--slate-600);">件数</th>
+              <th style="padding:8px 12px;text-align:center;font-weight:600;color:var(--slate-600);">🔴高</th>
+              <th style="padding:8px 12px;text-align:left;font-weight:600;color:var(--slate-600);">主な課題</th>
+              <th style="padding:8px 12px;text-align:left;font-weight:600;color:var(--slate-600);">大区分</th>
+            </tr></thead>
+            <tbody>
+              ${prodNameList.map(([name,d],i)=>{
+                const topB=Object.entries(d.barriers).sort((a,b)=>b[1]-a[1])[0];
+                const topM=Object.entries(d.majors).sort((a,b)=>b[1]-a[1])[0];
+                const bgColor = i%2===0?'#fff':'var(--slate-50)';
+                const rankColor = i===0?'#EF4444':i===1?'#F59E0B':i===2?'#2563EB':'var(--slate-400)';
+                return `<tr style="background:${bgColor};border-bottom:1px solid var(--slate-100);">
+                  <td style="padding:8px 12px;font-weight:700;color:${rankColor};text-align:center;">${i+1}</td>
+                  <td style="padding:8px 12px;font-weight:500;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${name}</td>
+                  <td style="padding:8px 12px;text-align:center;font-weight:700;color:var(--primary-mid);">${d.count}</td>
+                  <td style="padding:8px 12px;text-align:center;font-weight:700;color:#DC2626;">${d.high||0}</td>
+                  <td style="padding:8px 12px;font-size:11px;color:var(--slate-600);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${topB?topB[0]+'('+topB[1]+'件)':'—'}</td>
+                  <td style="padding:8px 12px;font-size:11px;color:var(--slate-600);">${topM?topM[0]:'—'}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+      </div>` : '<p style="color:var(--slate-400);padding:20px;text-align:center;font-size:12px;">商品名データなし</p>';
+    document.getElementById('ec-prod-cards').insertAdjacentHTML('afterbegin', prodNameHtml);
+  }
+
+  // 商品改善セクション
+  const prodCatMap={};
+  rows.forEach(r=>{
+    const cat=r[C.PROD_CAT]||'不明';
+    if(cat==='不明'||!cat) return;
+    if(!prodCatMap[cat]) prodCatMap[cat]={count:0,high:0,mid:0,low:0,barriers:{},intents:{}};
+    const u=r[C.URGENCY]||'低';
+    const b=normalizeBarrier((r[C.BARRIER_SHORT]||'').split(';')[0].trim());
+    const intent=(r[C.INTENT_SHORT]||'').split(';')[0].trim();
+    prodCatMap[cat].count++;
+    if(u.includes('高')) prodCatMap[cat].high++;
+    else if(u.includes('中')) prodCatMap[cat].mid++;
+    else prodCatMap[cat].low++;
+    if(!isNoBarrier(b)) prodCatMap[cat].barriers[b]=(prodCatMap[cat].barriers[b]||0)+1;
+    if(intent&&intent!=='不明') prodCatMap[cat].intents[intent]=(prodCatMap[cat].intents[intent]||0)+1;
+  });
+  const prodList=Object.entries(prodCatMap).sort((a,b)=>b[1].count-a[1].count);
+
+  // NO_BARRIER keywords — already defined as isNoBarrier() above
+  // Product card: VoC-driven actions (no static defaults)
+  document.getElementById('ec-prod-cards').innerHTML=`
+    <div style="margin-bottom:16px;background:#F5F3FF;border-radius:10px;padding:16px 20px;">
+      <h3 style="font-size:14px;font-weight:700;color:#5B21B6;margin-bottom:4px;">📦 商品改善レポート（カテゴリ別 問い合わせ分析）</h3>
+      <p style="font-size:12px;color:#6B7280;">実VoCデータに基づく問い合わせ内容と具体改善案。件数順。</p>
+    </div>
+    ${prodList.slice(0,12).map(([cat,d])=>{
+      const topB=Object.entries(d.barriers).sort((a,b)=>b[1]-a[1]).slice(0,3);
+      const topI=Object.entries(d.intents).sort((a,b)=>b[1]-a[1]).slice(0,3);
+      // web-specific barriers only (exclude 'Web起因なし' type entries)
+      const webB = topB.filter(([b])=>!isNoBarrier(b));
+      // Handcrafted natural-language actions based on real VoC patterns
+      const CAT_NATURAL = {
+        'カードケース': [
+          '大量注文（目安50個以上）向けに、商品ページへ「在庫・納期・分納について問い合わせる」ボタンを設置し、電話に頼らず在庫状況・入荷日・分納可否を確認できる導線を整備する。（在庫超過注文時の納期目安がWeb上で分からず電話確認という声あり）',
+          '商品ページの仕様欄に「差し込み可能なカード実寸（内寸）」を追記する。写真に定規の目盛りや実物比較を追加することで、注文前の電話確認を削減できる。',
+          '「出荷済み」表示後も到着しない場合の確認手順（追跡番号の見方・問い合わせ先）をヘルプに明示し、注文履歴ページから直接配送状況を確認できるリンクを追加する。'
+        ],
+        'クリスマスツリー': [
+          'クリスマス向け商品の掲載開始時期（例: 毎年10月ごろ）をトップページや商品一覧に告知し、「今年の入荷状況をメールで受け取る」通知登録機能を追加する。（カタログ切替のタイミングが分からないという声が複数あり）',
+          '多店舗・多拠点への分納注文（例: 160店舗への一括配送）について、注文ガイドに「複数配送先への一括注文方法」フローを追加する。ExcelでのCSV一括入力フォーマット配布も有効。',
+          '領収書にインボイス登録番号（T8120001082670）が記載されない支払い方法（NP掛け払い等）について、注文完了画面や利用ガイドに「インボイス対応書類の取得方法」を明記する。'
+        ],
+        '袋': [
+          'サンプル提供可否を商品ページに明示し、サンプル申請フォームをWeb上で完結できるようにする。（サンプル可否がカタログ・Web上で分からず電話確認という声あり）',
+          'FAX・電話で注文しているユーザー向けに、Webでの品番検索・注文の操作ガイド（動画または画像つきステップ）をヘルプに追加し、PC操作に不慣れな方の移行を促す。',
+          'キャンセルは注文直後でも一定時間はオンライン不可という制限をカート確認画面に事前表示し、「キャンセルご希望の方は○分以内にお電話を」などの案内を加える。'
+        ],
+        'フラワーショップ向けラッピング商品': [
+          '在庫数のリアルタイム表示、または「在庫わずか」「取り寄せ」などのステータスラベルを商品ページに追加し、電話確認を不要にする。（複数のVoC: 在庫数がWebで分からず電話確認）',
+          '注文後の数量不足・欠品発生時の対応フロー（メール通知・再出荷連絡・自動FAX等）を整備し、お客様が自分で配送状況を確認・連絡できるページを設ける。',
+          '廃番・新カタログ未掲載商品は「この商品は現在取り扱いを終了しました。類似商品はこちら」と代替リンクを表示し、問い合わせなしでも対処できるようにする。'
+        ],
+        'マネキン／トルソー（ボディ）': [
+          '「在庫あり」「メーカー直送（納期○〜○日）」「取り寄せ中」など配送区分ごとに商品ページでの表示を分け、売り切れ品と納期待ち品を視覚的に区別できるようにする。',
+          '注文後のキャンセル可能時間（例：注文から○分以内）を注文完了画面に明記し、時間超過時の変更・キャンセル手続き方法（電話番号・受付時間）を表示する。',
+          '大型商品（マネキン・トルソー等）の送料・大型運賃を商品ページ内の目立つ位置に記載し、商品別の個別運賃が分かるように一覧表ページを用意する。'
+        ],
+        'ワゴン／バスケット／ボックス什器': [
+          'Webオーダー番号の確認場所（注文完了メール・注文履歴ページ）を注文完了画面とヘルプに明示し、電話問い合わせ時にもスムーズに照合できるようにする。',
+          'カタログの品番・ページ表記（例: N-7など）とWeb上の商品番号の対応表または検索機能を整備し、カタログを見ながらWebで注文できるよう導線を強化する。',
+          'オプション部品（フラットネット等）の取付可否や注意書きの意味を、商品ページ内の「よくある質問」またはポップアップで補足説明する。'
+        ],
+        'レジ袋／ポリ袋': [
+          'お届け希望日設定画面で「この日に届けるには○時までに注文」と即時表示し、締切時刻ごとの出荷可否を視覚的に確認できるUIに改善する。',
+          'FAX注文の受付確認メール自動送信、または受注状況の確認ページ（FAX受付番号入力で確認可能）を用意し、明細FAX未着の不安を解消する。',
+          'サンプル請求フォームをWeb完結型に整備し、対象商品ページから直接申し込めるリンクを設置する。'
+        ],
+        'ハンガーラック': [
+          '請求書・納品書にインボイス登録番号（T8120001082670）を必ず印字し、Web上の「インボイス対応書類の取得方法」ガイドも強化する。NP掛け払い利用者向けには「別途インボイス書類のダウンロード手順」を注文完了メールに記載する。',
+          '「ストエキの日」（送料無料デー等）の日程・条件・店舗/通販それぞれの適用ルールをトップページや利用ガイドにカレンダー形式で掲示する。',
+          '「当日出荷可能」商品のお届け目安（最短日）を商品ページに明示し、注文画面での配送日目安との齟齬が生じないようリアルタイム表示を整備する。'
+        ],
+        '手提げ紙袋': [
+          '商品の寸法表記を「横×奥行き×高さ（cm）」と単位・順番を統一し、カタログとWeb表示で齟齬がないよう記載方法を標準化する。',
+          '廃番・取り扱い終了商品（例：雲龍紙質）のページには「この商品は廃番です。近い仕様の代替品はこちら」と代替商品リンクを設置し、電話確認を不要にする。',
+          'FAX注文の明細FAX未着時の再送依頼フォームをWebに用意し、お客様が自身で明細再送を要求できる導線を整備する。'
+        ],
+        'その他単体什器': [
+          '什器の商品ページに「引き出し内寸」「ガラス板寸法」「棚板厚み」などの部位別詳細寸法を必ず記載し、加工・陳列計画で必要な情報をWebで完結できるようにする。',
+          '大型商品の不在配達に関する案内（置き配の設定方法・再配達依頼手順・運送会社の連絡先）を注文確認メールと商品ページに追記する。',
+          '注文前に到着日の確実性が必要な場合（例：○日着指定）は、商品ページの在庫状況表示の精度を上げ「○日着可能」「○日以降可能」など判断材料を提示する。'
+        ],
+        'パーテーション／衝立': [
+          '在庫数のリアルタイム表示（特にメーカー直送品・色別在庫）を商品ページに追加し、チャットや電話で確認しなくても在庫可否が分かる設計にする。',
+          '日曜・祝日配送不可の商品、お届け日指定の締切時間（例：11時まで注文で当日出荷）など配送条件を商品ページ上部にアイコン付きで明示する。',
+          '伸縮・組立が必要な商品には組立難易度（目安時間・工具不要など）と、初心者向け組立動画・図解ページへのリンクを追加する。'
+        ],
+        'ネットスタンド': [
+          '注文完了後すぐに注文履歴に反映されない（最大30分程度）仕様を注文完了画面に表示し「しばらくしてから注文履歴をご確認ください」と案内することで再問い合わせを防ぐ。',
+          '商品のバリエーション（サイズ1/2等）ごとに在庫数・入荷予定を一覧表示し、カタログとWebで仕様差（ポール位置・取付箇所等）が分かる補足説明を商品ページに追加する。',
+          '部品（フラットバー・T字金具等）の単品販売可否と品番を商品ページ「アクセサリー・オプション」欄に掲載し、問い合わせなしで注文できるよう整備する。'
+        ],
+        'ショーケーススタンドタイプ': [
+          '商品ページに本体の打ち寸（足を除く高さ）・ガラス内寸など詳細寸法を記載し、施工・設置計画に必要な情報をWeb上で完結できるようにする。',
+          '組立設置サービスの対応条件（地域・施設の種類・同時注文条件等）を商品ページに明記し、利用可否をWebで事前確認できるようにする。',
+          '大型商品の配送会社（名鉄運輸など指定業者）や配送不可地域を商品ページに表示し、注文前に配送可否を確認できる導線を整備する。'
+        ],
+        'レジカウンター／レジ台': [
+          '商品ページに全体画像（複数角度）を追加し、色味・仕上がりが購入前に確認できるようにする。サイズ・カラーバリエーション表も整備する。',
+          '希望サイズ（高さ・幅・素材等）での商品検索・絞り込み機能を強化し、カタログ片手に電話しなくてもWebで候補商品を絞り込めるUI改善を行う。',
+          '名鉄運輸など指定業者が必要な商品・配送不可施設への注意事項を商品ページに事前掲示し、注文後の問い合わせを防止する。'
+        ]
+      };
+      // Use handcrafted natural-language actions if available, otherwise generate from VoC
+      let vocActions = [];
+      if(CAT_NATURAL[cat]) {
+        vocActions = CAT_NATURAL[cat];
+      } else if(webB.length > 0) {
+        vocActions = webB.map(([b,c])=>{
+          const cnt = c > 1 ? `（VoC ${c}件）` : '';
+          return `「${b}」という問い合わせが発生しています${cnt}。商品ページやFAQに関連情報を追加することで、電話確認を減らすことが期待できます。`;
+        });
+      } else if(topI.length > 0) {
+        vocActions = topI.map(([i,c])=>{
+          const cnt = c > 1 ? `（VoC ${c}件）` : '';
+          return `「${i}」への問い合わせが寄せられています${cnt}。この内容をWebで自己解決できるよう、FAQや操作ガイドへの掲載を検討してください。`;
+        });
+      }
+      const pct = d.count > 0 ? Math.round(d.high/d.count*100) : 0;
+      return `
+      <div class="prod-card">
+        <div class="prod-card-header">
+          <div>
+            <div class="prod-card-title">📦 ${cat}</div>
+            ${topI.length?`<div style="font-size:11px;color:#6B7280;margin-top:2px;">主な問い合わせ意図: ${topI.slice(0,2).map(([i,c])=>i+'('+c+'件)').join('・')}</div>`:''}
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:18px;font-weight:700;color:#5B21B6;">${d.count}件</div>
+            <div style="font-size:10px;color:#6B7280;">高緊急度率 ${pct}%</div>
+          </div>
+        </div>
+        <div class="prod-card-body">
+          <div class="ec-card-section">
+            <h4>⚠️ 主なWeb課題</h4>
+            ${topB.length?`<ul>${topB.map(([b,c])=>`<li><span style="flex-shrink:0"><b style="color:#DC2626">${c}件</b></span> ${b}</li>`).join('')}</ul>`
+            :'<p style="font-size:12px;color:#9CA3AF">具体的なWeb課題データなし</p>'}
+            <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;">
+              <span class="ec-stat-badge high">🔴 高${d.high}</span>
+              <span class="ec-stat-badge mid">🟡 中${d.mid}</span>
+              <span class="ec-stat-badge low">🔵 低${d.low}</span>
+            </div>
+          </div>
+          <div class="ec-fix-list">
+            ${vocActions.length > 0
+              ? `<h4>✅ VoC由来の具体改善案</h4><ol>${vocActions.map(a=>`<li style="padding:5px 0;">${a}</li>`).join('')}</ol>`
+              : `<p style="font-size:12px;color:#9CA3AF;padding:8px 0;">現データからWeb起因の改善点を特定できません（主に電話・FAX起因）</p>`
+            }
+          </div>
+        </div>
+      </div>`}).join('')}`;
+
+  // オペレーター対応改善セクション
+  const opIssues = {};
+  const opGoodMap = {};
+  rows.forEach(r=>{
+    const imp = (r[C.OP_IMPROVE]||'').trim();
+    const good = (r[C.OP_GOOD]||'').trim();
+    if(imp) opIssues[imp] = (opIssues[imp]||0)+1;
+    if(good) opGoodMap[good] = (opGoodMap[good]||0)+1;
+  });
+  const topIssues = Object.entries(opIssues).sort((a,b)=>b[1]-a[1]).slice(0,15);
+  const topGoods = Object.entries(opGoodMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+
+  // 改善テーマをグループ化
+  const OP_THEMES = [
+    {
+      title: '📞 折り返し・待ち時間の改善',
+      keywords: ['折り返し','待ち','時間','目安','再連絡'],
+      icon: '📞',
+      voice: '「折り返しで、だいたい何時頃になるか教えてもらえますか」',
+      actions: [
+        '折り返し時の「目安時間（○時間以内）」を必ず伝えるスクリプト化',
+        'コールバック予約システムの導入（待ち時間を可視化）',
+        '繁忙時間帯の増員またはコールフロー最適化',
+        '折り返し対応結果を自動でフォローメールとして送信'
+      ]
+    },
+    {
+      title: '📋 説明・案内の具体性向上',
+      keywords: ['具体的','説明','分かりやす','詳しく','明確'],
+      icon: '📋',
+      voice: '「もう少し具体的に教えていただけますか」',
+      actions: [
+        '商品仕様・納期・手続きの説明テンプレートをナレッジベースに整備',
+        '「はい/いいえ」で答えられる確認質問で顧客の意図を明確化するトレーニング',
+        '専門用語（OA番号・NP掛け払いなど）の分かりやすい言い換え集を整備',
+        '通話後の確認メール送付（説明内容をテキストで送ることで認識ズレを防止）'
+      ]
+    },
+    {
+      title: '🔍 システム・情報照会の迅速化',
+      keywords: ['確認','照会','調べ','システム','検索'],
+      icon: '🔍',
+      voice: '「確認してご折り返しします」が多く、即時回答できていない',
+      actions: [
+        '注文・在庫・配送状況をオペレーターが1画面で確認できるダッシュボード整備',
+        '問い合わせ内容と過去の対応履歴をCTI連携で即時表示',
+        '在庫・納期の即時回答率向上（システム部門との情報連携強化）',
+        '「その場で回答できるFAQ範囲」を拡大するナレッジ研修の実施'
+      ]
+    },
+    {
+      title: '💬 共感・傾聴の質向上',
+      keywords: ['丁寧','親切','共感','聞く','対応'],
+      icon: '💬',
+      voice: '「とても丁寧に対応していただけた」（高評価の声より）',
+      actions: [
+        '高評価オペレーターの対応例をロールプレイ教材として横展開',
+        '顧客の感情に合わせた言葉遣い（クッション言葉）の使い方研修',
+        '初期対応でまず「ご不便をおかけして申し訳ありません」と共感を示すスクリプト',
+        '定期的なCS勉強会で優良事例・改善事例を共有'
+      ]
+    }
+  ];
+
+  const opHtml = `
+    <div style="margin-bottom:16px;background:#EFF6FF;border-radius:10px;padding:16px 20px;">
+      <h3 style="font-size:14px;font-weight:700;color:#1E40AF;margin-bottom:4px;">👤 オペレーター対応改善レポート</h3>
+      <p style="font-size:12px;color:#6B7280;">問い合わせデータから抽出した改善テーマと具体的施策。</p>
+
+    </div>
+    <div class="op-improve-body" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;">
+      ${OP_THEMES.map(theme=>`
+        <div class="op-issue-card">
+          <h4>${theme.title}</h4>
+          <div class="issue-voice">💬 実VoC例: ${theme.voice}</div>
+          <ul>${theme.actions.map(a=>`<li>${a}</li>`).join('')}</ul>
+        </div>
+      `).join('')}
+    </div>
+  `;
+
+  document.getElementById('ec-op-section').innerHTML = opHtml;
+
+  // サブタブ切り替えイベント
+  document.querySelectorAll('.ec-subtab-btn').forEach(btn=>{
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.ec-subtab-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelectorAll('.ec-subtab-panel').forEach(p=>p.classList.remove('active'));
+      this.classList.add('active');
+      const target = this.getAttribute('data-subtab');
+      const panel = document.getElementById('ec-subtab-'+target);
+      if(panel) panel.classList.add('active');
+    });
+  });
+}
+
+function renderECCards() {
+  const selPri = (document.getElementById('f-ec-priority')||{}).value||'';
+  const selSearch = ((document.getElementById('f-ec-search')||{}).value||'').trim().toLowerCase();
+  const filtered = ecAllCards.filter(({page,pri})=>{
+    if(selPri && pri!==selPri) return false;
+    if(selSearch && !page.toLowerCase().includes(selSearch)) return false;
+    return true;
+  });
+  const countEl=document.getElementById('ec-filter-count');
+  if(countEl) countEl.textContent=`${filtered.length}ページ表示`;
+
+  document.getElementById('ec-site-cards').innerHTML = filtered.map(({page,d,pri,topBarriers,topMajors,meta})=>{
+    const priClass = pri==='高'?'high':pri==='中'?'mid':'low';
+    const priEmoji = pri==='高'?'🔴':pri==='中'?'🟡':'🔵';
+    return `
+    <div class="ec-page-card pri-${priClass}">
+      <div class="ec-stat-row">
+        <span class="ec-stat-badge">${priEmoji} 優先度: <b>${pri}</b></span>
+        <span class="ec-stat-badge">📊 総件数: <b>${d.count}</b></span>
+        <span class="ec-stat-badge high">🔴 高 ${d.high}</span>
+        <span class="ec-stat-badge mid">🟡 中 ${d.mid}</span>
+        <span class="ec-stat-badge low">🔵 低 ${d.low}</span>
+        ${topMajors.slice(0,2).map(([m,c])=>`<span class="ec-stat-badge" style="background:#F5F3FF;color:#5B21B6;">📂 ${m}(${c}件)</span>`).join('')}
+      </div>
+      <div class="ec-card-header">
+        <div>
+          <div class="ec-card-title">📄 ${page}</div>
+          <div class="ec-card-url">
+            ${meta.accessNote?`<span style="background:#FEF3C7;color:#92400E;font-size:10px;padding:1px 6px;border-radius:4px;margin-right:6px;">${meta.accessNote}</span>`:''}
+            ${meta.accessNote
+              ? `<span style="color:#374151;font-weight:500;">${meta.urlLabel}</span>`
+              : `<a href="${meta.url}" target="_blank" rel="noopener">${meta.urlLabel} ↗</a>&nbsp;—&nbsp;<span style="color:#9CA3AF;">${meta.url}</span>`
+            }
+          </div>
+        </div>
+      </div>
+      <div class="ec-card-body">
+        <div class="ec-card-section">
+          <h4>⚠️ 主なWeb課題</h4>
+          ${topBarriers.length?topBarriers.map(([b,c])=>`
+            <div class="ec-barrier-item">
+              <span class="ec-barrier-count">${c}件</span>
+              <span>${b}</span>
+            </div>`).join('')
+          :'<p style="font-size:12px;color:#9CA3AF;margin:4px 0;">データ取得中 / 具体的なWeb課題なし</p>'}
+        </div>
+        <div class="ec-card-section">
+          <h4>🔧 改善すべきUI箇所</h4>
+          <ul>${(meta.fixTargets||[]).map(t=>`<li>${t}</li>`).join('')}</ul>
+        </div>
+      </div>
+      <div style="padding:0 20px 16px;">
+        <div class="ec-fix-list">
+          <h4>✅ 具体的改善アクション</h4>
+          <ol>${meta.actions.map(a=>`<li style="padding:5px 0;">${a}</li>`).join('')}</ol>
+        </div>
+      </div>
+    </div>`;
+  }).join('')||`<p style="color:#666;padding:20px;text-align:center;">条件に一致するページがありません</p>`;
+}
+
+
+
+
+// ==========================================
+// VOICE MODAL (生の声モーダル)
+// ==========================================
+const VOICE_PAGE_SIZE = 10;
+let voiceCurrentRows = [];
+let voiceCurrentPage = 1;
+let voiceCurrentLabel = '';
+
+function openVoiceModal(label, sourceRows, filterType) {
+  voiceCurrentLabel = label;
+  voiceCurrentPage = 1;
+  if (filterType === 'timing') {
+    voiceCurrentRows = sourceRows.filter(r => {
+      const timings = (r[C.TIMING_SEL]||'').split(';').map(s=>cleanTiming(s)).filter(Boolean);
+      return timings.includes(label);
+    });
+  } else if (filterType === 'major') {
+    voiceCurrentRows = sourceRows.filter(r => {
+      const majors = (r[C.MAJOR_NAME]||'').split(';').map(s=>s.trim()).filter(Boolean);
+      return majors.includes(label);
+    });
+  }
+  const total = voiceCurrentRows.length;
+  document.getElementById('voice-modal-title').textContent =
+    '\u{1F4AC} \u9867\u5BA2\u306E\u751F\u306E\u58F0 \u2015 ' + label + '\uff08\u5168' + total + '\u4EF6\uff09';
+  renderVoiceModal();
+  document.getElementById('voice-modal-overlay').style.display = 'block';
+}
+
+function renderVoiceModal() {
+  const rows = voiceCurrentRows;
+  const total = rows.length;
+  const pages = Math.max(1, Math.ceil(total / VOICE_PAGE_SIZE));
+  if (voiceCurrentPage > pages) voiceCurrentPage = 1;
+  const start = (voiceCurrentPage - 1) * VOICE_PAGE_SIZE;
+  const pageRows = rows.slice(start, start + VOICE_PAGE_SIZE);
+  const body = document.getElementById('voice-modal-body');
+  if (pageRows.length === 0) {
+    body.innerHTML = '<p style="color:#888;padding:16px">該当する生の声が見つかりません</p>';
+  } else {
+    body.innerHTML = pageRows.map((r, i) => {
+      const date = r[C.DATE] ? r[C.DATE].slice(0,4)+'/'+r[C.DATE].slice(4,6)+'/'+r[C.DATE].slice(6,8) : '―';
+      const urgency = (r[C.URGENCY]||'').split(';')[0] || '―';
+      const voice = r[C.CUSTOMER_VOICE] || '';
+      const summary = r[C.SUMMARY] || '';
+      const intent = r[C.INTENT_SHORT] || '';
+      const barrier = r[C.BARRIER_SHORT] || '';
+      const status = r[C.RESOLVE_STATUS] || '―';
+      const urg = urgency === '高' ? '#B91C1C' : urgency === '中' ? '#92400E' : '#1e40af';
+      const idx = start + i + 1;
+      const mainText = voice || summary;
+      const textLabel = voice ? '💬' : '📝';
+      return '<div class="voice-card">'
+        + '<div class="vc-meta">#' + idx + '&nbsp;&nbsp;' + date + '&nbsp;&nbsp;'
+        + '<span style="color:' + urg + ';font-weight:600">' + urgency + '</span>'
+        + '&nbsp;&nbsp;<span style="color:#059669">' + status + '</span>'
+        + (r[C.CU_ATTR] ? '&nbsp;&nbsp;' + r[C.CU_ATTR] : '') + '</div>'
+        + (mainText ? '<div class="vc-text">' + textLabel + ' ' + mainText + '</div>' : '')
+        + (intent ? '<div class="vc-intent">🎯 意図: ' + intent + (barrier ? ' ｜ 🚧 課題: ' + barrier : '') + '</div>' : '')
+        + '</div>';
+    }).join('');
+  }
+  const pager = document.getElementById('voice-pager');
+  pager.innerHTML = '';
+  if (pages > 1) {
+    const info = document.createElement('span');
+    info.style.cssText = 'font-size:12px;color:#666;align-self:center;margin-right:8px;';
+    info.textContent = voiceCurrentPage + '/' + pages + 'ページ（全' + total + '件）';
+    pager.appendChild(info);
+    if (voiceCurrentPage > 1) {
+      const b = document.createElement('button'); b.className = 'voice-page-btn';
+      b.textContent = '‹ 前'; b.onclick = () => { voiceCurrentPage--; renderVoiceModal(); };
+      pager.appendChild(b);
+    }
+    const maxBtn = 7;
+    let s = Math.max(1, voiceCurrentPage - 3), e = Math.min(pages, s + maxBtn - 1);
+    if (e - s < maxBtn - 1) s = Math.max(1, e - maxBtn + 1);
+    for (let p = s; p <= e; p++) {
+      const b = document.createElement('button');
+      b.className = 'voice-page-btn' + (p === voiceCurrentPage ? ' active' : '');
+      b.textContent = p;
+      b.onclick = (function(pp){ return function(){ voiceCurrentPage = pp; renderVoiceModal(); }; })(p);
+      pager.appendChild(b);
+    }
+    if (voiceCurrentPage < pages) {
+      const b = document.createElement('button'); b.className = 'voice-page-btn';
+      b.textContent = '次 ›'; b.onclick = () => { voiceCurrentPage++; renderVoiceModal(); };
+      pager.appendChild(b);
+    }
+  }
+}
+
+// ==========================================
+// EXPORT
+// ==========================================
+document.getElementById('btn-export').addEventListener('click',()=>{
+  const headers=['日付','顧客属性','サイト','大区分NO','大区分名','小区分NO','小区分名','意図要約','課題要約','緊急度','解決ステータス','会話要約'];
+  const cols=[C.DATE,C.CU_ATTR,C.SOURCE_SITE,C.MAJOR_NO,C.MAJOR_NAME,C.MINOR_NO,C.MINOR_NAME,C.INTENT_SHORT,C.BARRIER_SHORT,C.URGENCY,C.RESOLVE_STATUS,C.SUMMARY];
+  const csv=[headers.join(','),...filteredRows.map(r=>cols.map(c=>`"${(r[c]||'').replace(/"/g,'""')}"`).join(','))].join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`VOC_export_${new Date().toISOString().slice(0,10)}.csv`;a.click();
+});
+
+// ==========================================
+// EVENTS
+// ==========================================
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+['f-date-from','f-date-to','f-major','f-minor','f-cu-attr','f-site','f-urgency','f-timing','f-source'].forEach(id=>{
+  const el=document.getElementById(id); if(el) el.addEventListener('change',applyFilters);
+});
+document.getElementById('btn-reset').addEventListener('click',()=>{
+  ['f-date-from','f-date-to'].forEach(id=>document.getElementById(id).value='');
+  ['f-major','f-minor','f-cu-attr','f-site','f-urgency','f-timing','f-source'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  applyFilters();
+});
+document.getElementById('voc-search').addEventListener('input',()=>renderVoc());
+document.getElementById('modal-close').addEventListener('click',()=>{document.getElementById('modal-overlay').style.display='none';});
+document.getElementById('modal-overlay').addEventListener('click',e=>{
+  if(e.target===document.getElementById('modal-overlay')) document.getElementById('modal-overlay').style.display='none';
+});
+document.getElementById('voice-modal-close').addEventListener('click',()=>{document.getElementById('voice-modal-overlay').style.display='none';});
+document.getElementById('voice-modal-overlay').addEventListener('click',e=>{
+  if(e.target===document.getElementById('voice-modal-overlay')) document.getElementById('voice-modal-overlay').style.display='none';
+});
+
+// ==========================================
+// LOAD DATA
+// ==========================================
+async function loadData() {
+  let callRows = [], formRows = [];
+  try {
+    // コールデータ読み込み
+    const resp = await fetch(DATA_URL);
+    if(!resp.ok) throw new Error('call fetch failed');
+    const text = await resp.text();
+    const result = Papa.parse(text, {skipEmptyLines:true});
+    callRows = result.data.slice(1).filter(r=>r.length>=10).map(r=>{
+      const nr = [...r]; nr[41]='call'; return nr;
+    });
+  } catch(e) {
+    console.error('Call data error:', e);
+    callRows = generateSampleData().map(r=>{const nr=[...r];nr[41]='call';return nr;});
+  }
+  try {
+    // フォームデータ読み込み
+    const fresp = await fetch(FORM_URL);
+    if(!fresp.ok) throw new Error('form fetch failed');
+    const ftext = await fresp.text();
+    const fresult = Papa.parse(ftext, {skipEmptyLines:true});
+    formRows = fresult.data.slice(1).filter(r=>r.length>=5).map(fr=>mapFormRow(fr));
+  } catch(e) {
+    console.error('Form data error:', e);
+    formRows = [];
+  }
+  allRows = [...callRows, ...formRows];
+  const callCount = callRows.length, formCount = formRows.length;
+  document.getElementById('load-status').textContent=`✅ 全${allRows.length.toLocaleString()}件（通話:${callCount}件 / フォーム:${formCount}件）`;
+  document.getElementById('data-source-badge').textContent=`通話${callCount}件 + フォーム${formCount}件`;
+  populateFilters();
+  filteredRows=[...allRows];
+  renderAll();
+  document.getElementById('loading').style.display='none';
+}
+
+function generateSampleData() {
+  const majors=['納期について','注文について','ご利用について','クレーム','カタログ・DMについて'];
+  const minors=['納期確認（ご注文後）','注文内容の確認','注文履歴について','お届け商品の破損','カタログを止めてほしい'];
+  const attrs=['事務担当','現場施工者','店舗オーナー','個人'];
+  const sites=['ストエキ（公式サイト）','不明','楽天'];
+  const urgencies=['高','中','低'];
+  const statuses=['解決','折り返し・調査中','未解決'];
+  const pages=['注文履歴一覧','注文履歴詳細','商品ページ','マイページ','ご利用ガイド（お届けについて）'];
+  const validOpArr=[...VALID_OPS];
+  const rows=[];
+  for(let i=0;i<100;i++){
+    const r=new Array(41).fill('');
+    const d=new Date(2025,Math.floor(Math.random()*6),Math.floor(Math.random()*28)+1);
+    r[C.DATE]=d.getFullYear()+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')+'120000';
+    r[C.MAJOR_NAME]=majors[i%majors.length];
+    r[C.MINOR_NAME]=minors[i%minors.length];
+    r[C.CU_ATTR]=attrs[i%attrs.length];
+    r[C.SOURCE_SITE]=sites[i%sites.length];
+    r[C.URGENCY]=urgencies[i%urgencies.length];
+    r[C.RESOLVE_STATUS]=statuses[i%statuses.length];
+    r[C.OP_NAME]=validOpArr[i%validOpArr.length];
+    r[C.OP_SCORE]=String(Math.floor(Math.random()*2)+3);
+    r[C.EST_PAGE]=pages[i%pages.length];
+    r[C.INTENT_SHORT]='問い合わせ例'+(i+1);
+    r[C.BARRIER_SHORT]='バリア例'+(i%10+1);
+    r[C.SUMMARY]='要約テキスト'+i;
+    r[C.CUSTOMER_VOICE]='お客様の声'+i;
+    r[C.PROD_CAT]=['ネットスタンド','カードケース','ラック','不明'][i%4];
+    rows.push(r);
+  }
+  return rows;
+}
+
+loadData();
+</script>
+</body>
+</html>
