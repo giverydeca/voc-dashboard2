@@ -1,4 +1,6 @@
 
+
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -473,6 +475,28 @@ tr:hover td { background:#EFF6FF !important; cursor:pointer; }
   transition:background .15s;
 }
 .export-btn:hover { background:var(--primary-hover); }
+
+.voc-icon-btn {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:30px;
+  height:26px;
+  padding:0 8px;
+  border:1px solid #BFDBFE;
+  border-radius:999px;
+  background:#EFF6FF;
+  color:#1D4ED8;
+  font-size:13px;
+  cursor:pointer;
+  transition:background .15s, border-color .15s, transform .15s;
+}
+.voc-icon-btn:hover {
+  background:#DBEAFE;
+  border-color:#60A5FA;
+  transform:translateY(-1px);
+}
+.intent-chart-wrap { cursor:default; }
 .flex-between {
   display:flex;
   justify-content:space-between;
@@ -1153,12 +1177,12 @@ tr:hover td { background:#EFF6FF !important; cursor:pointer; }
     <div class="kpi-grid" id="mkt-kpi-grid"></div>
     <div class="chart-grid">
       <div class="chart-card"><h3>👥 顧客属性分布</h3><div class="chart-wrap"><canvas id="ch-cuattr"></canvas></div></div>
-      <div class="chart-card full"><h3>🎯 意図ランキング TOP15（名寄せ後）</h3><div class="chart-wrap" style="height:320px"><canvas id="ch-intent"></canvas></div></div>
+      <div class="chart-card full"><h3>🎯 意図ランキング TOP15（名寄せ後）</h3><div class="chart-wrap intent-chart-wrap" style="height:320px"><canvas id="ch-intent"></canvas></div></div>
     </div>
     <p class="section-title">📋 FAQ テーブル（小区分 × 件数 × 解決率）</p>
     <div class="tbl-wrap">
       <table id="faq-table">
-        <thead><tr><th>小区分名</th><th>大区分名</th><th>件数</th><th>解決件数</th><th>解決率</th></tr></thead>
+        <thead><tr><th>小区分名</th><th>大区分名</th><th>件数</th><th>解決件数</th><th>解決率</th><th>VoC</th></tr></thead>
         <tbody id="faq-tbody"></tbody>
       </table>
     </div>
@@ -1528,6 +1552,117 @@ function barChartSingle(id, labels, data, opts={}) {
   });
 }
 
+let intentVoiceHitAreas = [];
+
+function filterRowsByIntentLabel(rows, label) {
+  return arr(rows).filter(r => {
+    const intents = normalizeIntentField(r?.[C.INTENT_SHORT] || r?.[C.INTENT] || '')
+      .split(';')
+      .map(s => safeTrim(s))
+      .filter(Boolean);
+    return intents.includes(label);
+  });
+}
+
+function getPrimaryMinorLabel(row) {
+  return str(row?.[C.MINOR_NAME] || '不明').split(';')[0].trim() || '不明';
+}
+
+function getPrimaryMajorLabel(row) {
+  return str(row?.[C.MAJOR_NAME] || '不明').split(';')[0].trim() || '不明';
+}
+
+function filterRowsByMinorLabel(rows, label) {
+  // FAQテーブルの件数集計と完全に同じ条件にするため、
+  // 小区分は「先頭の小区分」の完全一致だけで抽出する。
+  return arr(rows).filter(r => getPrimaryMinorLabel(r) === label);
+}
+
+function barChartIntentWithVoice(id, labels, data, sourceRows) {
+  destroyChart(id);
+  const canvas = document.getElementById(id);
+  if (!canvas) return;
+  intentVoiceHitAreas = [];
+
+  const iconPlugin = {
+    id:'intentVoiceIconPlugin',
+    afterDatasetsDraw(chart) {
+      const {ctx, chartArea} = chart;
+      const meta = chart.getDatasetMeta(0);
+      intentVoiceHitAreas = [];
+      ctx.save();
+      ctx.font = '16px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      meta.data.forEach((bar, i) => {
+        if (!bar) return;
+        const props = bar.getProps(['x','y'], true);
+        const iconX = Math.min(chartArea.right - 14, props.x + 24);
+        const iconY = props.y;
+        ctx.fillText('🔍', iconX, iconY);
+        intentVoiceHitAreas.push({
+          label: labels[i],
+          x1: iconX - 18,
+          x2: iconX + 18,
+          y1: iconY - 16,
+          y2: iconY + 16
+        });
+      });
+      ctx.restore();
+    }
+  };
+
+  charts[id] = new Chart(canvas, {
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{
+        label:'件数',
+        data,
+        backgroundColor:SINGLE_COLOR,
+        borderRadius:4,
+        barPercentage:.72,
+        categoryPercentage:.72
+      }]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true,
+      maintainAspectRatio:false,
+      layout:{ padding:{ right:42 } },
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:c=>` ${c.parsed.x}件`}}
+      },
+      scales:{
+        x:{ grid:{display:false}, ticks:{font:{size:11}}, grace:'12%' },
+        y:{ ticks:{font:{size:11}} }
+      }
+    },
+    plugins:[iconPlugin]
+  });
+
+  function getIntentIconHit(ev) {
+    // Chart.jsの描画座標はCSSピクセル基準。
+    // devicePixelRatio分を掛けると当たり判定がズレるため、rect差分をそのまま使う。
+    const rect = canvas.getBoundingClientRect();
+    const x = ev.clientX - rect.left;
+    const y = ev.clientY - rect.top;
+    return intentVoiceHitAreas.find(a => x >= a.x1 && x <= a.x2 && y >= a.y1 && y <= a.y2);
+  }
+
+  canvas.onclick = (ev) => {
+    const hit = getIntentIconHit(ev);
+    if (!hit) return;
+    const targetRows = filterRowsByIntentLabel(sourceRows, hit.label);
+    openVoiceModalRows(`意図: ${hit.label}（${targetRows.length}件）`, targetRows, `現在の上部絞り込み条件: ${getActiveFilterSummary()}`);
+  };
+
+  canvas.onmousemove = (ev) => {
+    canvas.style.cursor = getIntentIconHit(ev) ? 'pointer' : 'default';
+  };
+}
+
 
 function getSourceKey(r) {
   return (r?.[41] || 'call') === 'form' ? 'form' : 'call';
@@ -1586,18 +1721,69 @@ function doughnutBySourcePairs(id, labels, telData, webData) {
   });
 }
 
-function urgencyDoughnutChart(id, labels, data) {
+function urgencySourceBarChart(id, labels, telData, webData) {
   destroyChart(id);
   const ctx = document.getElementById(id);
   if (!ctx) return;
-  const colors = labels.map(l => urgencyColor(l));
-  charts[id] = new Chart(ctx, {
-    type:'doughnut',
-    data:{ labels, datasets:[{data, backgroundColor:colors, borderWidth:2}] },
-    options:{
-      responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{position:'right',labels:{font:{size:11},boxWidth:14}} }
+
+  const order = ['高','中','低'];
+  const labelSet = new Set(labels || []);
+  const orderedLabels = order.filter(l => labelSet.has(l));
+  const sourceIndex = Object.fromEntries((labels || []).map((l, i) => [l, i]));
+  const tel = orderedLabels.map(l => telData[sourceIndex[l]] || 0);
+  const web = orderedLabels.map(l => webData[sourceIndex[l]] || 0);
+  const maxVal = Math.max(1, ...tel, ...web);
+
+  // TEL / WEB はそれぞれ1色に固定する（緊急度は縦軸の高・中・低で表現）
+  const telColor = '#1D4ED8';
+  const webColor = '#38BDF8';
+
+  const valueLabelPlugin = {
+    id:'urgencySourceValueLabels',
+    afterDatasetsDraw(chart) {
+      const {ctx, chartArea} = chart;
+      ctx.save();
+      ctx.font = '700 11px Inter, Noto Sans JP, sans-serif';
+      ctx.fillStyle = '#475569';
+      ctx.textBaseline = 'middle';
+      chart.data.datasets.forEach((dataset, datasetIndex) => {
+        const meta = chart.getDatasetMeta(datasetIndex);
+        meta.data.forEach((bar, index) => {
+          const val = Number(dataset.data[index] || 0);
+          if (!val) return;
+          const label = `${val.toLocaleString()}件`;
+          const x = Math.min(bar.x + 8, chartArea.right - ctx.measureText(label).width - 2);
+          ctx.fillText(label, x, bar.y);
+        });
+      });
+      ctx.restore();
     }
+  };
+
+  charts[id] = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: orderedLabels.map(l => l === '高' ? '🔴 高' : l === '中' ? '🟡 中' : '🔵 低'),
+      datasets:[
+        { label:'TEL', data:tel, backgroundColor:telColor, borderRadius:5, barPercentage:.72, categoryPercentage:.68 },
+        { label:'WEB', data:web, backgroundColor:webColor, borderRadius:5, barPercentage:.72, categoryPercentage:.68 }
+      ]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true,
+      maintainAspectRatio:false,
+      layout:{ padding:{ right:46 } },
+      plugins:{
+        legend:{ display:true, position:'top', labels:{font:{size:12}, boxWidth:18} },
+        tooltip:{ callbacks:{ label:c=>` ${c.dataset.label}: ${c.parsed.x.toLocaleString()}件` } }
+      },
+      scales:{
+        x:{ beginAtZero:true, suggestedMax:Math.ceil(maxVal * 1.18), grid:{display:false}, ticks:{font:{size:11}, precision:0} },
+        y:{ grid:{display:false}, ticks:{font:{size:12, weight:'700'}} }
+      }
+    },
+    plugins:[valueLabelPlugin]
   });
 }
 
@@ -2218,7 +2404,7 @@ function renderDashboard() {
     });
   }
   const urgencyData = countBySource(rows, r=>r?.[C.URGENCY], 10, ['高','中','低']);
-  doughnutBySourcePairs('ch-urgency', urgencyData.labels, urgencyData.tel, urgencyData.web);
+  urgencySourceBarChart('ch-urgency', urgencyData.labels, urgencyData.tel, urgencyData.web);
   renderSourceTypeDoubleDoughnut(rows);
   const timingData = countBySource(rows, r=>r?.[C.TIMING_SEL], 10, TIMING_CANONICAL.filter(k => k !== '07 不明'));
   barChartBySource('ch-timing', timingData.labels, timingData.tel, timingData.web);
@@ -2325,12 +2511,13 @@ function renderMarketing() {
   doughnutChart('ch-cuattr', attrTop.map(d=>d[0]), attrTop.map(d=>d[1]));
 
   const intentData = topN(count(rows, r=>normalizeIntentField(r?.[C.INTENT_SHORT])),15);
-  barChartSingle('ch-intent', intentData.map(d=>d[0]), intentData.map(d=>d[1]));
+  barChartIntentWithVoice('ch-intent', intentData.map(d=>d[0]), intentData.map(d=>d[1]), rows);
 
   const faqMap = {};
   rows.forEach(r=>{
-    const minor = str(r?.[C.MINOR_NAME] || '不明').split(';')[0].trim();
-    const major = str(r?.[C.MAJOR_NAME] || '不明').split(';')[0].trim();
+    const minor = getPrimaryMinorLabel(r);
+    if (!minor || minor === '不明') return;
+    const major = getPrimaryMajorLabel(r);
     if (!faqMap[minor]) faqMap[minor] = {major, count:0, resolved:0};
     faqMap[minor].count++;
     if (r?.[C.RESOLVE_STATUS] === '解決') faqMap[minor].resolved++;
@@ -2338,10 +2525,20 @@ function renderMarketing() {
   const faqRows = Object.entries(faqMap).sort((a,b)=>b[1].count-a[1].count).slice(0,30);
   const faqBody = document.getElementById('faq-tbody');
   if (faqBody) {
-    faqBody.innerHTML = faqRows.map(([minor,d])=>`
+    faqBody.innerHTML = faqRows.map(([minor,d], idx)=>`
       <tr><td>${escapeHtml(minor)}</td><td>${escapeHtml(d.major)}</td><td>${d.count}</td><td>${d.resolved}</td>
-      <td>${d.count?(d.resolved/d.count*100).toFixed(0)+'%':'―'}</td></tr>
+      <td>${d.count?(d.resolved/d.count*100).toFixed(0)+'%':'―'}</td>
+      <td><button type="button" class="voc-icon-btn js-faq-voc" data-minor-idx="${idx}" title="この小区分のVoCを見る">🔍</button></td></tr>
     `).join('');
+    faqBody.querySelectorAll('.js-faq-voc').forEach(btn => {
+      btn.onclick = (ev) => {
+        ev.stopPropagation();
+        const minor = faqRows[Number(btn.dataset.minorIdx)]?.[0];
+        if (!minor) return;
+        const targetRows = filterRowsByMinorLabel(rows, minor);
+        openVoiceModalRows(`小区分: ${minor}（${targetRows.length}件）`, targetRows, `FAQテーブルの件数集計と同じ条件（先頭小区分の完全一致）で表示。現在の上部絞り込み条件: ${getActiveFilterSummary()}`);
+      };
+    });
   }
 
   const attrs = [...new Set(rows.map(r=>r?.[C.CU_ATTR]).filter(v=>v&&v!=='不明'&&v!==''))].slice(0,5);
